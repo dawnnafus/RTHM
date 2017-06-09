@@ -1,5 +1,5 @@
 ---
-title: "Refinery_Analysis"
+title: "Refinery Analysis"
 author: "Niklas Lollo"
 date: "6/3/2017"
 output: github_document
@@ -21,6 +21,8 @@ For R:
 ```{r load data, warning = F, message = F}
 # load air quality data
 air_qual <- read_csv("../refinery_data/airQuality_feedChannelData_data.csv")
+feed_4901 <- read_csv("../refinery_data/airQuality_feedChannelData_data4901.csv")
+feed_4902 <- read_csv("../refinery_data/feed_4902_during period of study.csv")
 
 # load paco data
 paco <- read_csv("../refinery_data/full_paco_download.csv")
@@ -38,10 +40,37 @@ fb_daily <- inner_join(fb_body, fb_activities, fb_sleep, by = "t")
 rm(fb_body, fb_activities, fb_sleep)
 ```
 
+```{r functions, message=F, warning=F}
+# Right-aligned rolling average
+movingavg <- function(the_data, n_years){
+  result = rep(NA, length(the_data))
+  for (i in 1:length(the_data)){
+    if (i < n_years){
+      next
+     }
+        result[i] = mean(the_data[(i - n_years + 1):i])
+    }
+  return(result)
+}
+
+fb_daily <- fb_daily %>% mutate(
+  sulfur_dioxide = ,
+  methane = 
+)
+
+
+```
+
 
 ```{r might be interesting}
 # Recreate correlations
-air_qual %>% ggplot() + geom_point(aes(x = t, y = carbonMonoxide))
+# Moving window of blood oxygen (3 or 5 hr)
+
+## Heart Rate and Sulfur Dioxide
+ggplot() + geom_point(aes(x = t, y = carbonMonoxide))
+## Heart Rate and Methane
+## Blood Oxygen and Sulfur Dioxide
+ggplot() + geom_point(aes(x = t, y = carbonMonoxide))
 
 # Chi-square test
 
