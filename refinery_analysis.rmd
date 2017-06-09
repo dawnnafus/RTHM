@@ -93,15 +93,74 @@ rm(feed_4901, feed_4902,feed_4902_methane)
 # load paco data
 paco <- read_csv("../refinery_data/paco_all.csv")
 
-# load fitbit data
+# Remove extra values (supposed to be a correction)
+paco$when<-gsub("\\+0000","",paco$when)
+# Converting / to - part 1
+paco$when<-sub("[[:punct:]]","-",paco$when)
+# Converting / to - part 2
+paco$when<-sub("\\/","-",paco$when)
+
+# Rename persons of interest
+paco$who[paco$who == "meaningfrommonitoring3@gmail.com"] <- "m3"
+paco$who[paco$who == "meaningfrommonitoring5@gmail.com"] <- "m5"
+paco$who[paco$who == "meaningfrommonitoring7@gmail.com"] <- "m7"
+paco$who[paco$who == "meaningfrommonitoring9@gmail.com"] <- "m9"
+paco$who[paco$who == "meaningfrommonitoring10@gmail.com"] <- "m10"
+paco$who[paco$who == "meaningfrommonitoring11@gmail.com"] <- "m11"
+paco$who[paco$who == "meaningfrommonitoring16@gmail.com"] <- "m16"
+
+# Creating new dataframe
+paco <- paco %>%
+  mutate(
+    # Make person column as a factor
+    person = as.factor(who),
+    # Convert date column to datetime
+    t = as.POSIXct(when, tz="GMT", format="%Y-%m-%d %H:%M:%S")
+    ) %>%
+  # Remove columns not of interest
+  select(-c(who, when, appId, pacoVersion, experimentId,
+            experimentName, experimentVersion, experimentGroupName,
+            actionTriggerId, actionId, actionSpecId, responseTime,
+            scheduledTime, timeZone)
+         ) %>%
+  # Select persons of interest 
+  filter(
+    person == "m3" | person == "m5" | person == "m7" |
+      person == "m9" | person == "m10" | person == "m11" |
+      person == "m16"
+  )
+```
+
+```{r load fitbit data}
+# Load fitbit data
 fb_body <- read_csv("../refinery_data/fitbit_body_data.csv")
 fb_activities <- read_csv("../refinery_data/fitbit_activities_data.csv")
-fb_intraday <- read_csv("../refinery_data/fitbit_intradayactivities_data.csv")
 fb_sleep <- read_csv("../refinery_data/fitbit_sleep_data.csv")
 
-# merge daily fitbit data
+# Merge daily fitbit data
 fb_daily <- inner_join(fb_body, fb_activities, fb_sleep, by = "t")
 rm(fb_body, fb_activities, fb_sleep)
+
+# Load intraday activity
+fb_intraday <- read_csv("../refinery_data/fitbit_intradayactivities_data.csv")
+fb_intraday <- fb_intraday %>%
+  # Select the day and hour of interest (get rid of minute and seconds)
+  group_by(
+    # Creates new variables
+    day=format(as.POSIXct(cut(t, breaks='day')), '%y%m%d'),
+    hour=format(as.POSIXct(cut(t, breaks='hour')), '%H')
+    ) %>%
+  summarise(
+    # Averages
+    calories = sum(calories, na.rm=T),
+    distance = sum(distance, na.rm=T),
+    steps = sum(steps, na.rm=T),
+    heart_rate = mean(heart, na.rm=T),
+    floors = sum(floors, na.rm=T),
+    elevation = sum(elevation, na.rm=T)
+    ) %>%
+  # Arrange the columns by day
+  arrange(day)
 ```
 
 ```{r functions, message=F, warning=F}
