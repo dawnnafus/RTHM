@@ -128,10 +128,32 @@ paco <- paco %>%
     person == "m3" | person == "m5" | person == "m7" |
       person == "m9" | person == "m10" | person == "m11" |
       person == "m16"
-  )
+  ) %>% 
+  arrange(t)
+# Remove incorrect values
+paco$SPO2[paco$SPO2 == 0 | paco$SPO2 > 100 | paco$SPO2 < 80] <- NA
+# Make hourly dataframe
+paco_hourly <- paco %>%
+  # Select the person, day and hour of interest
+  group_by(
+    person,
+    # Creates new variables
+    day = format(as.POSIXct(cut(t, breaks='day')), '%y%m%d'),
+    hour= format(as.POSIXct(cut(t, breaks='hour')), '%H')
+    ) %>%
+  summarise(
+    # Average
+    blood_oxygen = mean(SPO2, na.rm=T)
+    ) %>%
+  filter(
+    is.na(blood_oxygen) == F
+  ) %>%
+  # Arrange the columns by person
+  arrange(person) 
+
 ```
 
-```{r load fitbit data}
+```{r load fitbit data, message =F, warning = F}
 # Load fitbit data
 fb_body <- read_csv("../refinery_data/fitbit_body_data.csv")
 fb_activities <- read_csv("../refinery_data/fitbit_activities_data.csv")
@@ -179,8 +201,10 @@ movingavg <- function(the_data, n_years){
 
 
 ```{r might be interesting}
-# Recreate correlations
 # Moving window of blood oxygen (3 or 5 hr)
+
+
+# Recreate correlations
 
 ## Heart Rate and Sulfur Dioxide
 ## Heart Rate and Methane
