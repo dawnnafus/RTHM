@@ -5,17 +5,18 @@ date: "6/3/2017"
 output: github_document
 ---
 
-```{r setup, include=FALSE}
+```{r setup, include=FALSE, echo = F}
 knitr::opts_chunk$set(echo = TRUE)
 library(tidyverse)
 ```
 
-### Key websites:
+### Content websites:
 + http://www.fenceline.org/rodeo/data.php
 + https://esdr.cmucreatelab.org/home
 + http://airwatchbayarea.org/
 + https://makesenseofdata.com/#!/experiments/my
-For R:
+
+### For R:
 + http://r4ds.had.co.nz/introduction.html
 
 ```{r load air quality data, warning=F, message=F}
@@ -91,8 +92,6 @@ rm(feed_4901, feed_4902,feed_4902_methane)
 ```{r load paco data, warning=F, message=F}
 # load paco data
 paco <- read_csv("../refinery_data/paco_all.csv")
-pacomfm3 <- read_csv("../refinery_data/PacoMFM3.csv")
-# to-do: merge paco datasets
 
 # load fitbit data
 fb_body <- read_csv("../refinery_data/fitbit_body_data.csv")
@@ -117,13 +116,6 @@ movingavg <- function(the_data, n_years){
     }
   return(result)
 }
-
-fb_daily <- fb_daily %>% mutate(
-  sulfur_dioxide = ,
-  methane = 
-)
-
-
 ```
 
 
@@ -132,10 +124,8 @@ fb_daily <- fb_daily %>% mutate(
 # Moving window of blood oxygen (3 or 5 hr)
 
 ## Heart Rate and Sulfur Dioxide
-ggplot() + geom_point(aes(x = t, y = carbonMonoxide))
 ## Heart Rate and Methane
 ## Blood Oxygen and Sulfur Dioxide
-ggplot() + geom_point(aes(x = t, y = carbonMonoxide))
 
 # Chi-square test
 
