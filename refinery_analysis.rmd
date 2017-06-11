@@ -18,6 +18,9 @@ library(tidyverse)
 
 ### For R:
 + http://r4ds.had.co.nz/introduction.html
++ Rstudio version 1.0.143
++ R version 3.4.0
++ tidyverse version 1.1.1
 
 ```{r load air quality data, warning=F, message=F}
 # load air quality data
@@ -34,14 +37,12 @@ hourly_4902 <- feed_4902 %>%
   group_by(
     # Creates new variables
     day=format(as.POSIXct(cut(t, breaks='day')), '%y%m%d'),
-    hour=format(as.POSIXct(cut(t, breaks='hour')), '%H')
-    ) %>%
+    hour=format(as.POSIXct(cut(t, breaks='hour')), '%H')) %>%
   summarise(
     # Averages
     sulfur_dioxide = mean(sulfurDioxide, na.rm=T),
     carbon_monoxide = mean(carbonMonoxide, na.rm=T),
-    ozone = mean(ozone, na.rm=T)
-    ) %>%
+    ozone = mean(ozone, na.rm=T)) %>%
   # Arrange the columns by day
   arrange(day)
 
@@ -50,14 +51,12 @@ feed_4902_methane[feed_4902_methane == 0] <- NA
 hourly_4902_methane <- feed_4902_methane %>%
   group_by(
     day=format(as.POSIXct(cut(t, breaks='day')), '%y%m%d'),
-    hour=format(as.POSIXct(cut(t, breaks='hour')), '%H')
-    ) %>%
+    hour=format(as.POSIXct(cut(t, breaks='hour')), '%H')) %>%
   summarise(
     # Averages
     methane = mean(Methane, na.rm=T),
     benzene = mean(Benzene, na.rm=T),
-    nitrous_oxide = mean(`Nitrous Oxide`, na.rm=T)
-    ) %>%
+    nitrous_oxide = mean(`Nitrous Oxide`, na.rm=T)) %>%
   # Arrange the columns by day
   arrange(day)
 
@@ -73,12 +72,11 @@ air_qual_4901 <- feed_4901 %>%
     day=format(as.POSIXct(cut(t, breaks='day')), '%y%m%d'),
     hour=format(as.POSIXct(cut(t, breaks='hour')), '%H')
     ) %>%
-  summarise(
     # Averages
+  summarise(
     sulfur_dioxide = mean(sulfurDioxide, na.rm=T),
     carbon_monoxide = mean(carbonMonoxide, na.rm=T),
-    ozone = mean(ozone, na.rm=T)
-    ) %>%
+    ozone = mean(ozone, na.rm=T)) %>%
   # Arrange the columns by day
   arrange(day)
 
@@ -87,7 +85,6 @@ rm(hourly_4902, hourly_4902_methane)
 # Remove original dataframes
 rm(feed_4901, feed_4902,feed_4902_methane)
 ```
-
 
 ```{r load paco data, warning=F, message=F}
 # load paco data
@@ -115,39 +112,29 @@ paco <- paco %>%
     # Make person column as a factor
     person = as.factor(who),
     # Convert date column to datetime
-    t = as.POSIXct(when, tz="GMT", format="%Y-%m-%d %H:%M:%S")
-    ) %>%
+    t = as.POSIXct(when, tz="GMT", format="%Y-%m-%d %H:%M:%S")) %>%
   # Remove columns not of interest
   select(-c(who, when, appId, pacoVersion, experimentId,
             experimentName, experimentVersion, experimentGroupName,
             actionTriggerId, actionId, actionSpecId, responseTime,
-            scheduledTime, timeZone)
-         ) %>%
+            scheduledTime, timeZone)) %>%
   # Select persons of interest 
-  filter(
-    person == "m3" | person == "m5" | person == "m7" |
+  filter(person == "m3" | person == "m5" | person == "m7" |
       person == "m9" | person == "m10" | person == "m11" |
-      person == "m16"
-  ) %>% 
+      person == "m16") %>% 
   arrange(t)
 # Remove incorrect values
 paco$SPO2[paco$SPO2 == 0 | paco$SPO2 > 100 | paco$SPO2 < 80] <- NA
 # Make hourly dataframe
 paco_hourly <- paco %>%
   # Select the person, day and hour of interest
-  group_by(
-    person,
+  group_by(person,
     # Creates new variables
     day = format(as.POSIXct(cut(t, breaks='day')), '%y%m%d'),
-    hour= format(as.POSIXct(cut(t, breaks='hour')), '%H')
-    ) %>%
-  summarise(
+    hour= format(as.POSIXct(cut(t, breaks='hour')), '%H')) %>%
     # Average
-    blood_oxygen = mean(SPO2, na.rm=T)
-    ) %>%
-  filter(
-    is.na(blood_oxygen) == F
-  ) %>%
+  summarise(blood_oxygen = mean(SPO2, na.rm=T)) %>%
+  filter(is.na(blood_oxygen) == F) %>%
   # Arrange the columns by person
   arrange(person) 
 
@@ -170,8 +157,7 @@ fb_intraday <- fb_intraday %>%
   group_by(
     # Creates new variables
     day=format(as.POSIXct(cut(t, breaks='day')), '%y%m%d'),
-    hour=format(as.POSIXct(cut(t, breaks='hour')), '%H')
-    ) %>%
+    hour=format(as.POSIXct(cut(t, breaks='hour')), '%H')) %>%
   summarise(
     # Averages
     calories = sum(calories, na.rm=T),
@@ -179,8 +165,7 @@ fb_intraday <- fb_intraday %>%
     steps = sum(steps, na.rm=T),
     heart_rate = mean(heart, na.rm=T),
     floors = sum(floors, na.rm=T),
-    elevation = sum(elevation, na.rm=T)
-    ) %>%
+    elevation = sum(elevation, na.rm=T)) %>%
   # Arrange the columns by day
   arrange(day)
 ```
