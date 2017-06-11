@@ -130,13 +130,13 @@ paco_hourly <- paco %>%
   # Select the person, day and hour of interest
   group_by(person,
     # Creates new variables
-    day = format(as.POSIXct(cut(t, breaks='day')), '%y%m%d'),
+    day = as.POSIXct(cut(t, breaks='day')),
     hour= format(as.POSIXct(cut(t, breaks='hour')), '%H')) %>%
     # Average
   summarise(blood_oxygen = mean(SPO2, na.rm=T)) %>%
   filter(is.na(blood_oxygen) == F) %>%
   # Arrange the columns by person
-  arrange(person) 
+  arrange(person)
 
 ```
 
@@ -172,21 +172,52 @@ fb_intraday <- fb_intraday %>%
 
 ```{r functions, message=F, warning=F}
 # Right-aligned rolling average
-movingavg <- function(the_data, n_years){
-  result = rep(NA, length(the_data))
-  for (i in 1:length(the_data)){
-    if (i < n_years){
+# See if day is the same
+paco_hourly <- paco_hourly %>% 
+  group_by(person) %>%
+  mutate(
+    subtract = ifelse(day == lag(day), T, F)
+    # Now you can search back to find the TRUE's in a row which will give you all the same day
+  )
+
+
+
+movingavg <- function(the_data, person = person, column, n = 5){
+  require(dplyr)
+  the_data %>% 
+    group_by(person) %>% 
+    arrange(day, hour) %>%
+    mutate(
+  )
+  result = rep(NA, nrow(column))
+  for (i in 1:nrow(column)){
+    if (i < n){
       next
      }
-        result[i] = mean(the_data[(i - n_years + 1):i])
+        result[i] = mean(the_data[(i - n + 1):i])
     }
   return(result)
 }
+
+
+nrow(paco_hourly)
+
+paco_hourly$five_blood <- movingavg(paco_hourly, 5)
 ```
 
 
 ```{r might be interesting}
 # Moving window of blood oxygen (3 or 5 hr)
+library(RcppRoll)
+paco_hourly <- paco_hourly %>% 
+  group_by(person) %>% 
+  arrange(day, hour) %>%
+  mutate(five_hour = roll_meanr(blood_oxygen,
+                            n=5L,
+                            fill = NA,
+                            na.rm=T,
+                            normalize=FALSE)) %>% ungroup
+summary(paco_hourly$five_hour)
 
 
 # Recreate correlations
