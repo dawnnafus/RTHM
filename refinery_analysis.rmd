@@ -176,7 +176,7 @@ paco_hourly <- paco_hourly %>%
   group_by(person) %>% 
   arrange(day) %>%
   mutate(
-    lag_1 = day - lag(day),
+    lag_1 = day-lag(day),
     lag_2 = (day-lag(day,2))/3600,
     lag_3 = (day-lag(day,3))/3600,
     lag_4 = (day-lag(day,4))/3600,
@@ -189,25 +189,10 @@ paco_hourly <- paco_hourly %>%
                  NA)))))) %>% 
   ungroup %>% 
   arrange(person, day)
-
-boot::corr(paco_hourly$oxygen_window, air_qual_4901$sulfur_dioxide)
 ```
 
 
 ```{r might be interesting}
-# Moving window of blood oxygen (3 or 5 hr)
-library(RcppRoll)
-paco_hourly <- paco_hourly %>% 
-  group_by(person) %>% 
-  arrange(day) %>%
-  mutate(five_hour = roll_meanr(blood_oxygen,
-                            n=5L,
-                            fill = NA,
-                            na.rm=T,
-                            normalize=FALSE)) %>% ungroup
-summary(paco_hourly$five_hour)
-
-
 # Recreate correlations
 
 ## Heart Rate and Sulfur Dioxide
