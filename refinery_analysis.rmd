@@ -36,8 +36,7 @@ hourly_4902 <- feed_4902 %>%
   # Select the day and hour of interest (get rid of minute and seconds)
   group_by(
     # Creates new variables
-    day=format(as.POSIXct(cut(t, breaks='day')), '%y%m%d'),
-    hour=format(as.POSIXct(cut(t, breaks='hour')), '%H')) %>%
+    day = as.POSIXct(cut(t, breaks='hour'))) %>%
   summarise(
     # Averages
     sulfur_dioxide = mean(sulfurDioxide, na.rm=T),
@@ -49,9 +48,9 @@ hourly_4902 <- feed_4902 %>%
 # Do the same for the other feed4902 dataframe
 feed_4902_methane[feed_4902_methane == 0] <- NA
 hourly_4902_methane <- feed_4902_methane %>%
-  group_by(
-    day=format(as.POSIXct(cut(t, breaks='day')), '%y%m%d'),
-    hour=format(as.POSIXct(cut(t, breaks='hour')), '%H')) %>%
+    group_by(
+    # Creates new variables
+    day = as.POSIXct(cut(t, breaks='hour'))) %>%
   summarise(
     # Averages
     methane = mean(Methane, na.rm=T),
@@ -60,8 +59,8 @@ hourly_4902_methane <- feed_4902_methane %>%
   # Arrange the columns by day
   arrange(day)
 
-air_qual_4902 <- right_join(hourly_4902, hourly_4902_methane, 
-                               by = c("day", "hour"))
+air_qual_4902 <- right_join(hourly_4902, hourly_4902_methane, by = "day") %>%
+  mutate(id = "feed_4902")
 
 # Do the same for feed 4901
 feed_4901[feed_4901 == 0] <- NA
@@ -69,14 +68,15 @@ air_qual_4901 <- feed_4901 %>%
   # Select the day and hour of interest (get rid of minute and seconds)
   group_by(
     # Creates new variables
-    day=format(as.POSIXct(cut(t, breaks='day')), '%y%m%d'),
-    hour=format(as.POSIXct(cut(t, breaks='hour')), '%H')
-    ) %>%
+    day = as.POSIXct(cut(t, breaks='hour'))) %>%
     # Averages
   summarise(
     sulfur_dioxide = mean(sulfurDioxide, na.rm=T),
     carbon_monoxide = mean(carbonMonoxide, na.rm=T),
     ozone = mean(ozone, na.rm=T)) %>%
+  mutate(
+    id = "feed_4901"
+  ) %>%
   # Arrange the columns by day
   arrange(day)
 
@@ -110,7 +110,7 @@ paco <- paco %>%
   ) %>%
   mutate(
     # Make person column as a factor
-    person = as.factor(who),
+    id = as.factor(who),
     # Convert date column to datetime
     t = as.POSIXct(when, tz="GMT", format="%Y-%m-%d %H:%M:%S")) %>%
   # Remove columns not of interest
@@ -119,23 +119,23 @@ paco <- paco %>%
             actionTriggerId, actionId, actionSpecId, responseTime,
             scheduledTime, timeZone)) %>%
   # Select persons of interest 
-  filter(person == "m3" | person == "m5" | person == "m7" |
-      person == "m9" | person == "m10" | person == "m11" |
-      person == "m16") %>% 
+  filter(id == "m3" | id == "m5" | id == "m7" |
+      id == "m9" | id == "m10" | id == "m11" |
+      id == "m16") %>% 
   arrange(t)
 # Remove incorrect values
 paco$SPO2[paco$SPO2 == 0 | paco$SPO2 > 100 | paco$SPO2 < 80] <- NA
 # Make hourly dataframe
 paco_hourly <- paco %>%
   # Select the person, day and hour of interest
-  group_by(person,
+  group_by(id,
     # Creates new variables
     day = as.POSIXct(cut(t, breaks='hour'))) %>%
     # Average
   summarise(blood_oxygen = mean(SPO2, na.rm=T)) %>%
   filter(is.na(blood_oxygen) == F) %>%
   # Arrange the columns by person
-  arrange(person)
+  arrange(id)
 ```
 
 ```{r load fitbit data, message =F, warning = F}
@@ -154,8 +154,7 @@ fb_intraday <- fb_intraday %>%
   # Select the day and hour of interest (get rid of minute and seconds)
   group_by(
     # Creates new variables
-    day=format(as.POSIXct(cut(t, breaks='day')), '%y%m%d'),
-    hour=format(as.POSIXct(cut(t, breaks='hour')), '%H')) %>%
+    day = as.POSIXct(cut(t, breaks='hour'))) %>%
   summarise(
     # Averages
     calories = sum(calories, na.rm=T),
@@ -173,7 +172,7 @@ fb_intraday <- fb_intraday %>%
 hours = 5
 # Make window average of blood oxygen data
 paco_hourly <- paco_hourly %>%
-  group_by(person) %>% 
+  group_by(id) %>% 
   arrange(day) %>%
   mutate(
     lag_1 = day-lag(day),
@@ -188,16 +187,52 @@ paco_hourly <- paco_hourly %>%
                         (blood_oxygen+lag(blood_oxygen)+lag(blood_oxygen,2)+lag(blood_oxygen,3))/4,
                  NA)))))) %>% 
   ungroup %>% 
-  arrange(person, day)
+  arrange(id, day)
 ```
 
+```{r create time column, message=F, warning=F}
+# 5/13 0:00 - 7/14 0:00
+
+full_time <- data_frame(time = seq(1463090400, 1468447200, by = 3600)) %>%
+  mutate(
+    day = as.POSIXct(time, origin = "1970-01-01")
+  ) %>% select(-time)
+```
+
+```{r create full dataset, message=F, warning=F}
+df <- full_join(full_time, air_qual_4901, by = "day") %>%
+  full_join(air_qual_4902, by = c("day", "id", "sulfur_dioxide","carbon_monoxide", "ozone")) %>%
+  bind_rows(fb_intraday, .id = NULL) %>%
+  bind_rows(paco_hourly, .id = NULL) %>%
+  select(day, id, everything(), -lag_1, -lag_2, -lag_3, -lag_4) %>%
+  arrange(day)
+```
 
 ```{r might be interesting}
 # Recreate correlations
+## Blood Oxygen and Sulfur Dioxide
+q <- df %>% 
+  select(day, id, blood_oxygen, sulfur_dioxide) %>% 
+  filter(!is.na(blood_oxygen) | !is.na(sulfur_dioxide)) %>% 
+  arrange(day) %>% spread(id,id)
+
+qs<-q %>% 
+  group_by(day) %>%
+  summarize(cor = cor(blood_oxygen, sulfur_dioxide)) %>% 
+  ungroup() #%>%
+  summarize(mean = mean(cor))
+
+# Need to spread by id, but need fb to have id's like paco
+
+q %>% filter(heart_rate > 50 | is.na(heart_rate)) %>% ggplot() + 
+  geom_point(aes(x = day, y = sulfur_dioxide, color = feed)) + 
+  geom_point(aes(x = day, y = heart_rate))
+
+# Missing data from both feeds
+q %>% spread() %>% select(heart_rate, sulfur_dioxide) %>% boot::corr()
 
 ## Heart Rate and Sulfur Dioxide
 ## Heart Rate and Methane
-## Blood Oxygen and Sulfur Dioxide
 
 # Chi-square test
 
@@ -216,4 +251,5 @@ paco_hourly <- paco_hourly %>%
 # Need to do exploration, make it functional. Maybe don't use moving windows. 
 
 # Light check-in
+
 ```
