@@ -1,7 +1,6 @@
 ---
 title: "Refinery Analysis"
 author: "Niklas Lollo"
-date: "6/3/2017"
 output: github_document
 ---
 
@@ -205,51 +204,36 @@ df <- full_join(full_time, air_qual_4901, by = "day") %>%
   bind_rows(fb_intraday, .id = NULL) %>%
   bind_rows(paco_hourly, .id = NULL) %>%
   select(day, id, everything(), -lag_1, -lag_2, -lag_3, -lag_4) %>%
+  mutate(id = as.factor(id)) %>%
   arrange(day)
 ```
 
-```{r might be interesting}
-# Recreate correlations
+```{r correlations, warning=F, message=F}
+correlation_fun <- function(initial_df, var_1, var_2, var_time) {
+  require(dplyr)
+  ## Make dataframe
+  initial_df %>%
+    select(!!var_1, !!var_2, !!var_time) %>%
+    filter(!is.na(!!var_1) | !is.na(!!var_2))%>% 
+    group_by(!!var_time) %>%
+    summarize(mean_var1 = mean(!!var_1, na.rm=T),
+               mean_var2 = mean(!!var_2, na.rm=T)) %>% 
+    ungroup %>% 
+    filter(!is.na(mean_var1) & !is.na(mean_var2)) %>%
+    select(mean_var1,mean_var2) %>% 
+    boot::corr() %>% 
+    print()
+}
+# https://rpubs.com/hadley/dplyr-programming 
+# See this for quosures and programming with dplyr
+
 ## Blood Oxygen and Sulfur Dioxide
-q <- df %>% 
-  select(day, id, blood_oxygen, sulfur_dioxide) %>% 
-  filter(!is.na(blood_oxygen) | !is.na(sulfur_dioxide)) %>% 
-  arrange(day) %>% spread(id,id)
-
-qs<-q %>% 
-  group_by(day) %>%
-  summarize(cor = cor(blood_oxygen, sulfur_dioxide)) %>% 
-  ungroup() #%>%
-  summarize(mean = mean(cor))
-
-# Need to spread by id, but need fb to have id's like paco
-
-q %>% filter(heart_rate > 50 | is.na(heart_rate)) %>% ggplot() + 
-  geom_point(aes(x = day, y = sulfur_dioxide, color = feed)) + 
-  geom_point(aes(x = day, y = heart_rate))
-
-# Missing data from both feeds
-q %>% spread() %>% select(heart_rate, sulfur_dioxide) %>% boot::corr()
-
+correlation_fun(df, quo(blood_oxygen),quo(sulfur_dioxide),quo(day))
 ## Heart Rate and Sulfur Dioxide
+correlation_fun(df, quo(heart_rate),quo(sulfur_dioxide),quo(day))
 ## Heart Rate and Methane
-
-# Chi-square test
-
-
-# FB_daily is an aggregate
-
-
-### Fuse together
-
-
-### Mess around
-# Moving window of blood oxygen (3 or 5 hr)
-# Mess around with exposure levels
-
-
-# Need to do exploration, make it functional. Maybe don't use moving windows. 
-
-# Light check-in
-
+correlation_fun(df, quo(heart_rate),quo(methane),quo(day))
+# Only problem here is need to filter for low heart rate
 ```
+
+```{r chi square test, warning=F, message=F}

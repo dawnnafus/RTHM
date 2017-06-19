@@ -1,7 +1,6 @@
 Refinery Analysis
 ================
 Niklas Lollo
-6/3/2017
 
 ### Content websites:
 
@@ -31,8 +30,7 @@ hourly_4902 <- feed_4902 %>%
   # Select the day and hour of interest (get rid of minute and seconds)
   group_by(
     # Creates new variables
-    day=format(as.POSIXct(cut(t, breaks='day')), '%y%m%d'),
-    hour=format(as.POSIXct(cut(t, breaks='hour')), '%H')) %>%
+    day = as.POSIXct(cut(t, breaks='hour'))) %>%
   summarise(
     # Averages
     sulfur_dioxide = mean(sulfurDioxide, na.rm=T),
@@ -44,9 +42,9 @@ hourly_4902 <- feed_4902 %>%
 # Do the same for the other feed4902 dataframe
 feed_4902_methane[feed_4902_methane == 0] <- NA
 hourly_4902_methane <- feed_4902_methane %>%
-  group_by(
-    day=format(as.POSIXct(cut(t, breaks='day')), '%y%m%d'),
-    hour=format(as.POSIXct(cut(t, breaks='hour')), '%H')) %>%
+    group_by(
+    # Creates new variables
+    day = as.POSIXct(cut(t, breaks='hour'))) %>%
   summarise(
     # Averages
     methane = mean(Methane, na.rm=T),
@@ -55,8 +53,8 @@ hourly_4902_methane <- feed_4902_methane %>%
   # Arrange the columns by day
   arrange(day)
 
-air_qual_4902 <- right_join(hourly_4902, hourly_4902_methane, 
-                               by = c("day", "hour"))
+air_qual_4902 <- right_join(hourly_4902, hourly_4902_methane, by = "day") %>%
+  mutate(id = "feed_4902")
 
 # Do the same for feed 4901
 feed_4901[feed_4901 == 0] <- NA
@@ -64,14 +62,15 @@ air_qual_4901 <- feed_4901 %>%
   # Select the day and hour of interest (get rid of minute and seconds)
   group_by(
     # Creates new variables
-    day=format(as.POSIXct(cut(t, breaks='day')), '%y%m%d'),
-    hour=format(as.POSIXct(cut(t, breaks='hour')), '%H')
-    ) %>%
+    day = as.POSIXct(cut(t, breaks='hour'))) %>%
     # Averages
   summarise(
     sulfur_dioxide = mean(sulfurDioxide, na.rm=T),
     carbon_monoxide = mean(carbonMonoxide, na.rm=T),
     ozone = mean(ozone, na.rm=T)) %>%
+  mutate(
+    id = "feed_4901"
+  ) %>%
   # Arrange the columns by day
   arrange(day)
 
@@ -105,7 +104,7 @@ paco <- paco %>%
   ) %>%
   mutate(
     # Make person column as a factor
-    person = as.factor(who),
+    id = as.factor(who),
     # Convert date column to datetime
     t = as.POSIXct(when, tz="GMT", format="%Y-%m-%d %H:%M:%S")) %>%
   # Remove columns not of interest
@@ -114,23 +113,23 @@ paco <- paco %>%
             actionTriggerId, actionId, actionSpecId, responseTime,
             scheduledTime, timeZone)) %>%
   # Select persons of interest 
-  filter(person == "m3" | person == "m5" | person == "m7" |
-      person == "m9" | person == "m10" | person == "m11" |
-      person == "m16") %>% 
+  filter(id == "m3" | id == "m5" | id == "m7" |
+      id == "m9" | id == "m10" | id == "m11" |
+      id == "m16") %>% 
   arrange(t)
 # Remove incorrect values
 paco$SPO2[paco$SPO2 == 0 | paco$SPO2 > 100 | paco$SPO2 < 80] <- NA
 # Make hourly dataframe
 paco_hourly <- paco %>%
   # Select the person, day and hour of interest
-  group_by(person,
+  group_by(id,
     # Creates new variables
     day = as.POSIXct(cut(t, breaks='hour'))) %>%
     # Average
   summarise(blood_oxygen = mean(SPO2, na.rm=T)) %>%
   filter(is.na(blood_oxygen) == F) %>%
   # Arrange the columns by person
-  arrange(person)
+  arrange(id)
 ```
 
 ``` r
@@ -149,8 +148,7 @@ fb_intraday <- fb_intraday %>%
   # Select the day and hour of interest (get rid of minute and seconds)
   group_by(
     # Creates new variables
-    day=format(as.POSIXct(cut(t, breaks='day')), '%y%m%d'),
-    hour=format(as.POSIXct(cut(t, breaks='hour')), '%H')) %>%
+    day = as.POSIXct(cut(t, breaks='hour'))) %>%
   summarise(
     # Averages
     calories = sum(calories, na.rm=T),
@@ -168,7 +166,7 @@ fb_intraday <- fb_intraday %>%
 hours = 5
 # Make window average of blood oxygen data
 paco_hourly <- paco_hourly %>%
-  group_by(person) %>% 
+  group_by(id) %>% 
   arrange(day) %>%
   mutate(
     lag_1 = day-lag(day),
@@ -183,31 +181,67 @@ paco_hourly <- paco_hourly %>%
                         (blood_oxygen+lag(blood_oxygen)+lag(blood_oxygen,2)+lag(blood_oxygen,3))/4,
                  NA)))))) %>% 
   ungroup %>% 
-  arrange(person, day)
+  arrange(id, day)
 ```
 
 ``` r
-# Recreate correlations
+# 5/13 0:00 - 7/14 0:00
 
-## Heart Rate and Sulfur Dioxide
-## Heart Rate and Methane
+full_time <- data_frame(time = seq(1463090400, 1468447200, by = 3600)) %>%
+  mutate(
+    day = as.POSIXct(time, origin = "1970-01-01")
+  ) %>% select(-time)
+```
+
+``` r
+df <- full_join(full_time, air_qual_4901, by = "day") %>%
+  full_join(air_qual_4902, by = c("day", "id", "sulfur_dioxide","carbon_monoxide", "ozone")) %>%
+  bind_rows(fb_intraday, .id = NULL) %>%
+  bind_rows(paco_hourly, .id = NULL) %>%
+  select(day, id, everything(), -lag_1, -lag_2, -lag_3, -lag_4) %>%
+  mutate(id = as.factor(id)) %>%
+  arrange(day)
+```
+
+``` r
+correlation_fun <- function(initial_df, var_1, var_2, var_time) {
+  require(dplyr)
+  ## Make dataframe
+  initial_df %>%
+    select(!!var_1, !!var_2, !!var_time) %>%
+    filter(!is.na(!!var_1) | !is.na(!!var_2))%>% 
+    group_by(!!var_time) %>%
+    summarize(mean_var1 = mean(!!var_1, na.rm=T),
+               mean_var2 = mean(!!var_2, na.rm=T)) %>% 
+    ungroup %>% 
+    filter(!is.na(mean_var1) & !is.na(mean_var2)) %>%
+    select(mean_var1,mean_var2) %>% 
+    boot::corr() %>% 
+    print()
+}
+# https://rpubs.com/hadley/dplyr-programming 
+# See this for quosures and programming with dplyr
+
 ## Blood Oxygen and Sulfur Dioxide
+correlation_fun(df, quo(blood_oxygen),quo(sulfur_dioxide),quo(day))
+```
 
-# Chi-square test
+    ## [1] -0.1374617
 
+``` r
+## Heart Rate and Sulfur Dioxide
+correlation_fun(df, quo(heart_rate),quo(sulfur_dioxide),quo(day))
+```
 
-# FB_daily is an aggregate
+    ## [1] -0.0760685
 
+``` r
+## Heart Rate and Methane
+correlation_fun(df, quo(heart_rate),quo(methane),quo(day))
+```
 
-### Fuse together
+    ## [1] -0.3205606
 
-
-### Mess around
-# Moving window of blood oxygen (3 or 5 hr)
-# Mess around with exposure levels
-
-
-# Need to do exploration, make it functional. Maybe don't use moving windows. 
-
-# Light check-in
+``` r
+# Only problem here is need to filter for low heart rate
 ```
