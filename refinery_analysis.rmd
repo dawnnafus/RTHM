@@ -166,6 +166,8 @@ paco_hourly <- paco %>%
       id == "m16") %>%
   # Arrange the columns by person
   arrange(id)
+
+rm(paco)
 ```
 
 ### Load Fitbit Data
@@ -229,6 +231,8 @@ fb_intraday <- fb_intra %>%
       id == "m16") %>%
   # Arrange the columns by day
   arrange(id, day)
+
+rm(fb_intra, fb_daily)
 ```
 
 ### Merge the Data
@@ -247,27 +251,17 @@ df <- full_join(full_time, air_qual_4901, by = "day") %>%
 # Now do moving window maybe with rollmean
 # Set hours of interest
 hours = 5
-# Make window average of blood oxygen data
-df <- df %>%
+# Make window average of sulfur dioxide data
+df <- 
+  df %>% 
   group_by(id) %>% 
   arrange(day) %>%
-  mutate(
-    lag_1 = day-lag(day),
-    lag_2 = (day-lag(day,2))/3600,
-    lag_3 = (day-lag(day,3))/3600,
-    lag_4 = (day-lag(day,4))/3600,
-    sulfur_window = ifelse(is.na(lag(day)), 
-                           sulfur_dioxide,
-                    ifelse(lag_1>hours, 
-                           sulfur_dioxide,
-                    ifelse(lag_2>hours, 
-                           (sulfur_dioxide+lag(sulfur_dioxide))/2,
-                    ifelse(lag_3>hours, 
-                           (sulfur_dioxide+lag(sulfur_dioxide)+lag(sulfur_dioxide,2))/3,
-                    ifelse(lag_4>hours, 
-                        (sulfur_dioxide+lag(sulfur_dioxide)+
-                           lag(sulfur_dioxide,2)+lag(sulfur_dioxide,3))/4,
-                 NA)))))) %>% 
+  mutate(sulfur_window = zoo::rollapply(sulfur_dioxide, 
+                                        width = hours, 
+                                        FUN = mean, 
+                                        na.rm = T, 
+                                        partial = T,
+                                        align = "right")) %>% 
   ungroup %>%
   arrange(id, day)
 ```
