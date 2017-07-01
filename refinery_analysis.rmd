@@ -246,22 +246,21 @@ df <- full_join(full_time, air_qual_4901, by = "day") %>%
   arrange(day)
 ```
 
-### Create average window
+### Create Moving Window Average
 ```{r moving window, message=F, warning=F}
-# Now do moving window maybe with rollmean
 # Set hours of interest
 hours = 5
-# Make window average of sulfur dioxide data
+# Moving window average of sulfur dioxide
 df <- 
   df %>% 
   group_by(id) %>% 
   arrange(day) %>%
   mutate(sulfur_window = zoo::rollapply(sulfur_dioxide, 
-                                        width = hours, 
-                                        FUN = mean, 
-                                        na.rm = T, 
-                                        partial = T,
-                                        align = "right")) %>% 
+                                        width = hours, #how many data to include
+                                        FUN = mean, #function is mean
+                                        na.rm = T, #avoids NA
+                                        partial = T, #skips unnecessary datapoints
+                                        align = "right")) %>%
   ungroup %>%
   arrange(id, day)
 ```
