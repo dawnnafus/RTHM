@@ -60,6 +60,7 @@ hourly_4902 <- feed_4902 %>%
     sulfur_dioxide = mean(sulfurDioxide, na.rm=T),
     carbon_monoxide = mean(carbonMonoxide, na.rm=T),
     ozone = mean(ozone, na.rm=T)) %>%
+  ungroup() %>%
   # Arrange the columns by day
   arrange(day) %>%
   full_join(full_time, by = "day")
@@ -334,3 +335,22 @@ df %>%
   geom_smooth(method = "lm", se=F)
 ```
 
+```{r chi squared test, message=F, warning=F}
+
+q<- df %>% 
+  filter(!is.na(heart_rate) | !is.na(methane)) %>% 
+  group_by(day) %>%
+  summarize(mean_hr = mean(heart_rate, na.rm=T),
+            mean_m = mean(methane, na.rm=T)) %>%
+  ungroup %>% 
+  filter(!is.na(mean_hr) & !is.na(mean_m)) %>%
+  filter(mean_m > mean(mean_m))
+
+t.test(q$mean_hr, mu = 74)
+# Here we see that methane causes heart rate to go down about 4 points when
+# methane is above its mean value
+
+
+
+
+```
