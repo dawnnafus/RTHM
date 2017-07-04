@@ -9,6 +9,9 @@ knitr::opts_chunk$set(echo = TRUE)
 library(tidyverse)
 ```
 
+### Project home:
++ https://www.fairtechcollective.org/experiments/
+
 ### Content websites:
 + http://www.fenceline.org/rodeo/data.php
 + https://esdr.cmucreatelab.org/home
@@ -280,7 +283,7 @@ correlation_fun <- function(initial_df, var_1, var_2, var_time) {
                mean_var2 = mean(!!var_2, na.rm=T)) %>% 
     ungroup %>% 
     filter(!is.na(mean_var1) & !is.na(mean_var2)) %>%
-    select(mean_var1,mean_var2) %>% 
+    select(mean_var1, mean_var2) %>% 
     boot::corr() %>% 
     print()
 }
@@ -292,7 +295,7 @@ correlation_fun(df, quo(blood_oxygen),quo(sulfur_window),quo(day))
 ## Heart Rate and Sulfur Dioxide
 hr_sd_corr <- correlation_fun(df, quo(heart_rate),quo(sulfur_window),quo(day))
 ## Heart Rate and Methane
-df$heart_rate[df$heart_rate < 30] <- NA
+df$heart_rate[df$heart_rate < 30 & df$heart_rate > 200] <- NA
 correlation_fun(df, quo(heart_rate),quo(methane),quo(day))
 ```
 ### Correlation plots
@@ -335,8 +338,9 @@ df %>%
   geom_smooth(method = "lm", se=F)
 ```
 
+### Chi-Squared Tests
 ```{r chi squared test, message=F, warning=F}
-
+# Heart rate and methane
 q<- df %>% 
   filter(!is.na(heart_rate) | !is.na(methane)) %>% 
   group_by(day) %>%
@@ -346,11 +350,33 @@ q<- df %>%
   filter(!is.na(mean_hr) & !is.na(mean_m)) %>%
   filter(mean_m > mean(mean_m))
 
-t.test(q$mean_hr, mu = 74)
+v<- mean(df$heart_rate, na.rm=T)
+t.test(q$mean_hr, mu = v)
 # Here we see that methane causes heart rate to go down about 4 points when
 # methane is above its mean value
 
+# Heart rate and sulfur dioxide
+f<- df %>% 
+  filter(!is.na(heart_rate) | !is.na(sulfur_window)) %>% 
+  group_by(day) %>%
+  summarize(mean_hr = mean(heart_rate, na.rm=T),
+            mean_sd = mean(sulfur_window, na.rm=T)) %>%
+  ungroup %>% 
+  filter(!is.na(mean_hr) & !is.na(mean_sd)) %>%
+  filter(mean_sd > mean(mean_sd))
 
+t.test(f$mean_hr, mu = v)
 
+# Blood oxygen and sulfur dioxide
+g<- df %>% 
+  filter(!is.na(blood_oxygen) | !is.na(sulfur_window)) %>% 
+  group_by(day) %>%
+  summarize(mean_bo = mean(blood_oxygen, na.rm=T),
+            mean_sd = mean(sulfur_window, na.rm=T)) %>%
+  ungroup %>% 
+  filter(!is.na(mean_bo) & !is.na(mean_sd)) %>%
+  filter(mean_sd > mean(mean_sd))
 
+m<- mean(df$blood_oxygen, na.rm=T)
+t.test(g$mean_bo, mu = m)
 ```
