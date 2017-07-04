@@ -9,6 +9,9 @@ knitr::opts_chunk$set(echo = TRUE)
 library(tidyverse)
 ```
 
+### Project home:
++ https://www.fairtechcollective.org/experiments/
+
 ### Content websites:
 + http://www.fenceline.org/rodeo/data.php
 + https://esdr.cmucreatelab.org/home
@@ -22,6 +25,23 @@ library(tidyverse)
 + tidyverse version 1.1.1
 
 ## Setup
+### Create timespan of dataset
+```{r time dataset, message = F, warning =F}
+# Inputs here are date_begin and date_end
+timeframe <- function(date_begin = "2016-05-09 14:00", date_end = "2016-08-11 0:00"){
+  exp_begin = as.POSIXct(date_begin, tz="GMT", format="%Y-%m-%d %H")
+  exp_end = as.POSIXct(date_end, tz="GMT", format="%Y-%m-%d %H")
+  out = data_frame(day = seq(exp_begin, exp_end, by = 3600))
+  return(out)
+}
+full_time <- timeframe()
+# Manual
+date_begin = "2016-05-09 14:00"
+date_end = "2016-08-11 0:00"
+exp_begin = as.POSIXct(date_begin, tz="GMT", format="%Y-%m-%d %H")
+exp_end = as.POSIXct(date_end, tz="GMT", format="%Y-%m-%d %H")
+```
+
 ### Load Air Quality Data
 ```{r load air quality data, warning=F, message=F}
 # load air quality data
@@ -43,8 +63,10 @@ hourly_4902 <- feed_4902 %>%
     sulfur_dioxide = mean(sulfurDioxide, na.rm=T),
     carbon_monoxide = mean(carbonMonoxide, na.rm=T),
     ozone = mean(ozone, na.rm=T)) %>%
+  ungroup() %>%
   # Arrange the columns by day
-  arrange(day)
+  arrange(day) %>%
+  full_join(full_time, by = "day")
 
 # Do the same for the other feed4902 dataframe
 feed_4902_methane[feed_4902_methane == 0] <- NA
@@ -58,7 +80,8 @@ hourly_4902_methane <- feed_4902_methane %>%
     benzene = mean(Benzene, na.rm=T),
     nitrous_oxide = mean(`Nitrous Oxide`, na.rm=T)) %>%
   # Arrange the columns by day
-  arrange(day)
+  arrange(day) %>%
+  full_join(full_time, by = "day")
 
 air_qual_4902 <- right_join(hourly_4902, hourly_4902_methane, by = "day") %>%
   mutate(id = "feed_4902")
@@ -79,7 +102,8 @@ air_qual_4901 <- feed_4901 %>%
     id = "feed_4901"
   ) %>%
   # Arrange the columns by day
-  arrange(day)
+  arrange(day) %>%
+  full_join(full_time, by = "day")
 
 # Remove intermediate dataframes
 rm(hourly_4902, hourly_4902_methane)
@@ -125,6 +149,7 @@ paco <- paco %>%
       id == "m9" | id == "m10" | id == "m11" |
       id == "m16") %>% 
   arrange(t)
+
 # Remove incorrect values
 paco$SPO2[paco$SPO2 == 0 | paco$SPO2 > 100 | paco$SPO2 < 80] <- NA
 # Make hourly dataframe
@@ -133,11 +158,20 @@ paco_hourly <- paco %>%
   group_by(id,
     # Creates new variables
     day = as.POSIXct(cut(t, breaks='hour'))) %>%
-    # Average
+  # Average
   summarise(blood_oxygen = mean(SPO2, na.rm=T)) %>%
-  filter(is.na(blood_oxygen) == F) %>%
+  filter(is.na(blood_oxygen) == F) %>% 
+  complete(expand(nesting(id), day = seq(exp_begin, exp_end, by = 3600)),  
+           #completing all levels of id:day
+              fill = list(blood_oxygen = NA)) %>%
+  # Select persons of interest 
+  filter(id == "m3" | id == "m5" | id == "m7" |
+      id == "m9" | id == "m10" | id == "m11" |
+      id == "m16") %>%
   # Arrange the columns by person
   arrange(id)
+
+rm(paco)
 ```
 
 ### Load Fitbit Data
@@ -164,6 +198,7 @@ fb_intraday_m11 <- read_csv("../refinery_data/fitbit_intradayactivities_m11.csv"
   mutate(id = "m11")
 fb_intraday_m16 <- read_csv("../refinery_data/fitbit_intradayactivities_m16.csv")%>%
   mutate(id = "m16")
+
 # Combine dataframes
 fb_intra <- bind_rows(fb_intraday_m3, fb_intraday_m5, .id = NULL) %>%
   bind_rows(fb_intraday_m7, .id = NULL) %>%
@@ -171,6 +206,11 @@ fb_intra <- bind_rows(fb_intraday_m3, fb_intraday_m5, .id = NULL) %>%
   bind_rows(fb_intraday_m11, .id = NULL) %>%
   bind_rows(fb_intraday_m16, .id = NULL) %>%
   mutate(id = as.factor(id))
+
+# Remove intermediate columns
+rm(fb_intraday_m3, fb_intraday_m5, fb_intraday_m7,
+   fb_intraday_m9, fb_intraday_m11, fb_intraday_m16)
+
 # Make hourly data
 fb_intraday <- fb_intra %>% 
   group_by(id,
@@ -184,21 +224,22 @@ fb_intraday <- fb_intra %>%
     heart_rate = mean(heart, na.rm=T),
     floors = sum(floors, na.rm=T),
     elevation = sum(elevation, na.rm=T)) %>%
+    complete(expand(nesting(id), day = seq(exp_begin, exp_end, by = 3600)),  
+         #completing all levels of id:day
+              fill = list(calories = NA,distance = NA,
+                          steps = NA, heart_rate = NA,
+                          floors = NA, elevation = NA)) %>%
+  # Select persons of interest 
+  filter(id == "m3" | id == "m5" | id == "m7" |
+      id == "m9" | id == "m10" | id == "m11" |
+      id == "m16") %>%
   # Arrange the columns by day
   arrange(id, day)
-rm(fb_intraday_m3, fb_intraday_m5, fb_intraday_m7,
-   fb_intraday_m9, fb_intraday_m11, fb_intraday_m16)
+
+rm(fb_intra, fb_daily)
 ```
 
 ### Merge the Data
-```{r create time column, message=F, warning=F}
-# 5/13 0:00 - 7/14 0:00
-full_time <- data_frame(time = seq(1463090400, 1468447200, by = 3600)) %>%
-  mutate(
-    day = as.POSIXct(time, origin = "1970-01-01")
-  ) %>% select(-time)
-```
-
 ```{r create full dataset, message=F, warning=F}
 df <- full_join(full_time, air_qual_4901, by = "day") %>%
   full_join(air_qual_4902, by = c("day", "id", "sulfur_dioxide","carbon_monoxide", "ozone")) %>%
@@ -209,31 +250,21 @@ df <- full_join(full_time, air_qual_4901, by = "day") %>%
   arrange(day)
 ```
 
-### Create average window
+### Create Moving Window Average
 ```{r moving window, message=F, warning=F}
 # Set hours of interest
 hours = 5
-# Make window average of blood oxygen data
-df <- df %>%
+# Moving window average of sulfur dioxide
+df <- 
+  df %>% 
   group_by(id) %>% 
   arrange(day) %>%
-  mutate(
-    lag_1 = day-lag(day),
-    lag_2 = (day-lag(day,2))/3600,
-    lag_3 = (day-lag(day,3))/3600,
-    lag_4 = (day-lag(day,4))/3600,
-    sulfur_window = ifelse(is.na(lag(day)), 
-                           sulfur_dioxide,
-                    ifelse(lag_1>hours, 
-                           sulfur_dioxide,
-                    ifelse(lag_2>hours, 
-                           (sulfur_dioxide+lag(sulfur_dioxide))/2,
-                    ifelse(lag_3>hours, 
-                           (sulfur_dioxide+lag(sulfur_dioxide)+lag(sulfur_dioxide,2))/3,
-                    ifelse(lag_4>hours, 
-                        (sulfur_dioxide+lag(sulfur_dioxide)+
-                           lag(sulfur_dioxide,2)+lag(sulfur_dioxide,3))/4,
-                 NA)))))) %>% 
+  mutate(sulfur_window = zoo::rollapply(sulfur_dioxide, 
+                                        width = hours, #how many data to include
+                                        FUN = mean, #function is mean
+                                        na.rm = T, #avoids NA
+                                        partial = T, #skips unnecessary datapoints
+                                        align = "right")) %>%
   ungroup %>%
   arrange(id, day)
 ```
@@ -252,7 +283,7 @@ correlation_fun <- function(initial_df, var_1, var_2, var_time) {
                mean_var2 = mean(!!var_2, na.rm=T)) %>% 
     ungroup %>% 
     filter(!is.na(mean_var1) & !is.na(mean_var2)) %>%
-    select(mean_var1,mean_var2) %>% 
+    select(mean_var1, mean_var2) %>% 
     boot::corr() %>% 
     print()
 }
@@ -264,7 +295,7 @@ correlation_fun(df, quo(blood_oxygen),quo(sulfur_window),quo(day))
 ## Heart Rate and Sulfur Dioxide
 hr_sd_corr <- correlation_fun(df, quo(heart_rate),quo(sulfur_window),quo(day))
 ## Heart Rate and Methane
-df$heart_rate[df$heart_rate < 30] <- NA
+df$heart_rate[df$heart_rate < 30 & df$heart_rate > 200] <- NA
 correlation_fun(df, quo(heart_rate),quo(methane),quo(day))
 ```
 ### Correlation plots
@@ -307,3 +338,45 @@ df %>%
   geom_smooth(method = "lm", se=F)
 ```
 
+### Chi-Squared Tests
+```{r chi squared test, message=F, warning=F}
+# Heart rate and methane
+q<- df %>% 
+  filter(!is.na(heart_rate) | !is.na(methane)) %>% 
+  group_by(day) %>%
+  summarize(mean_hr = mean(heart_rate, na.rm=T),
+            mean_m = mean(methane, na.rm=T)) %>%
+  ungroup %>% 
+  filter(!is.na(mean_hr) & !is.na(mean_m)) %>%
+  filter(mean_m > mean(mean_m))
+
+v<- mean(df$heart_rate, na.rm=T)
+t.test(q$mean_hr, mu = v)
+# Here we see that methane causes heart rate to go down about 4 points when
+# methane is above its mean value
+
+# Heart rate and sulfur dioxide
+f<- df %>% 
+  filter(!is.na(heart_rate) | !is.na(sulfur_window)) %>% 
+  group_by(day) %>%
+  summarize(mean_hr = mean(heart_rate, na.rm=T),
+            mean_sd = mean(sulfur_window, na.rm=T)) %>%
+  ungroup %>% 
+  filter(!is.na(mean_hr) & !is.na(mean_sd)) %>%
+  filter(mean_sd > mean(mean_sd))
+
+t.test(f$mean_hr, mu = v)
+
+# Blood oxygen and sulfur dioxide
+g<- df %>% 
+  filter(!is.na(blood_oxygen) | !is.na(sulfur_window)) %>% 
+  group_by(day) %>%
+  summarize(mean_bo = mean(blood_oxygen, na.rm=T),
+            mean_sd = mean(sulfur_window, na.rm=T)) %>%
+  ungroup %>% 
+  filter(!is.na(mean_bo) & !is.na(mean_sd)) %>%
+  filter(mean_sd > mean(mean_sd))
+
+m<- mean(df$blood_oxygen, na.rm=T)
+t.test(g$mean_bo, mu = m)
+```
