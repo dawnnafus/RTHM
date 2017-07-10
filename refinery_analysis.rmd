@@ -9,21 +9,6 @@ knitr::opts_chunk$set(echo = TRUE)
 library(tidyverse)
 ```
 
-### Project home:
-+ https://www.fairtechcollective.org/experiments/
-
-### Content websites:
-+ http://www.fenceline.org/rodeo/data.php
-+ https://esdr.cmucreatelab.org/home
-+ http://airwatchbayarea.org/
-+ https://makesenseofdata.com/#!/experiments/my
-
-### For R:
-+ http://r4ds.had.co.nz/introduction.html
-+ Rstudio version 1.0.143
-+ R version 3.4.0
-+ tidyverse version 1.1.1
-
 ## Setup
 ### Create timespan of dataset
 ```{r time dataset, message = F, warning =F}
@@ -306,7 +291,7 @@ df %>%
   group_by(day) %>%
   summarize(mean_bo = mean(blood_oxygen, na.rm=T),
             mean_sd = mean(sulfur_window, na.rm=T)) %>% 
-  ungroup %>% 
+  ungroup %>%
   filter(!is.na(mean_bo) & !is.na(mean_sd)) %>%
   ggplot(aes(x= mean_sd, y= mean_bo)) + 
   geom_point()+
