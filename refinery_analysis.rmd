@@ -132,7 +132,18 @@ paco <- paco %>%
   # Select persons of interest 
   filter(id == "m3" | id == "m5" | id == "m7" |
       id == "m9" | id == "m10" | id == "m11" |
-      id == "m16") %>% 
+      id == "m16") %>%
+  mutate(
+    # Add in filtering labels
+    age = ifelse((id == "m3"), 15, 
+                 ifelse((id == "m5"), 20, 
+                        ifelse((id == "m7"), 25, 
+                               ifelse((id == "m9"), 55, 
+                                      ifelse((id=="m10"), 43,
+                                             ifelse((id=="m11"), 45,
+                                                    ifelse((id=="m16"),42,
+                                                           NA)))))))
+  ) %>%
   arrange(t)
 
 # Remove incorrect values
