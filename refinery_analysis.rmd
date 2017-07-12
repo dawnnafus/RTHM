@@ -6,7 +6,10 @@ output: github_document
 
 ```{r setup, include=FALSE, echo = F}
 knitr::opts_chunk$set(echo = TRUE)
-library(tidyverse)
+if(!require(tidyverse)){
+    install.packages("tidyverse")
+    library(tidyverse)
+}
 ```
 
 ## Setup

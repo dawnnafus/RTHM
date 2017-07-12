@@ -1,19 +1,26 @@
 ## How to use this code - Executive Summary
-First, you must download R and Rstudio.
 
-Second, you must load the package tidyverse.
-### For R:
-+ http://r4ds.had.co.nz/introduction.html
+### R
+First, you need to download R (https://cran.cnr.berkeley.edu/) and RStudio (https://www.rstudio.com/products/RStudio/#Desktop). Both are free. Make sure to download the correct version for your system and the desktop version of RStudio.
+
+The versions used to create the code are listed below. Other versions may or may not work with the code.
 + Rstudio version 1.0.143
 + R version 3.4.0
+
+This is the key package needed for the code. The code installs and/or loads it automatically, but just in case the version is listed below.
 + tidyverse version 1.1.1
 
-Third, you must gather your data, and make sure it is in the right location to be read by the code.
+And finally, this is a highly recommended tutorial for getting started with R, however the code does not require you to know the language. You only need to follow the directions given below, but if you would like to tinker. 
++ http://r4ds.had.co.nz/introduction.html
 
-Fourth, you need to change a few lines in the code to make it relevant for your project, i.e. id names, exposure windows, timeframe.
+### Data
+Now, you must gather your data, and make sure it is in the right location to be read by the code. The key datasets are: symptoms reporting (PACO), Fitbit, and refinery pollution data.
 
-## To print a report
-Results will appear in-line, however if you want to print a report and share it as a PDF, click "Knit" in the top bar. This will generate a PDF and you can save it to your desktop.
+### Manipulating the code
+Fourth, throughout the code, there are various user inputs and selections. These are marked in the code, but will be noted below in the detailed instructions. For instance, you will be asked to make the timeframe, ids, and exposure windows relevant for your project.
+
+### To print a report
+Results will appear in-line (i.e. within RStudio), however if you want to print a report and share it as a PDF, click "Knit" in the top bar. This will generate a PDF which you can save to your desktop.
 
 ## Detailed instructions
 ### If you haven't used R before
