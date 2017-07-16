@@ -272,6 +272,29 @@ ggplot(cc_wgs84, aes(x=long, y=lat)) +
             geom_path(aes(group=group)) + coord_map("mercator")
 ```
 
+### Load outside maps
+```{r outside maps, include=F}
+library(ggmap)
+library(maps)
+library(RgoogleMaps)
+
+# Saves plot of contra costa county
+cc_map <- 
+
+# State data
+states <- map_data("state")
+ggplot(states, aes(x=long, y=lat)) +
+  geom_polygon(aes(group=group, fill=region), colour="black", fill="white")
+merc = CRS("+init=epsg:3857")
+ccc <- map("county", "california,contra.costa")
+
+
+center = apply(coordinates(cc_wgs84), 2, mean)[2:1]
+g = GetMap(center=center, zoom=7) # google
+
+
+```
+
 ### Create Moving Window Average
 ```{r moving window, message=F, warning=F}
 # Set hours of interest
