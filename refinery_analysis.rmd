@@ -6,9 +6,13 @@ output: github_document
 
 ```{r setup, include=FALSE, echo = F}
 knitr::opts_chunk$set(echo = TRUE)
-if(!require(tidyverse)){
-    install.packages("tidyverse")
-    library(tidyverse)}
+# List of R packages
+required_pkg <- c("tidyverse","maptools", "rgdal")
+pkgs_not_installed <- required_pkg[!sapply(required_pkg, function(p) require(p, character.only=T))]
+install.packages(pkgs_not_installed, dependencies=TRUE)
+
+# Load all libraries at once.
+lapply(required_pkg, library, character.only = TRUE) 
 ```
 
 ## Setup
@@ -250,7 +254,7 @@ df <- full_join(full_time, air_qual_4901, by = "day") %>%
 
 ### Load Shapefiles
 ```{r load Contra Costa County shapefile, message=F, warning=F}
-library(rgdal)
+
 cc <- readOGR(dsn ="../refinery_data/location/BaseMapGrid", layer = "GRD_PWD_BaseMap_0106") #read shapefile
 summary(cc)
 cc_wgs84 <- spTransform(cc, CRS("+proj=longlat +datum=WGS84 +no_defs")) # convert to lat long
