@@ -298,6 +298,7 @@ View(ces_lat_cc)
 ces_lat_cc <- subset(ces_lat, County == "Contra Costa")
 plot(ces_lat_cc)
 
+# http://mazamascience.com/WorkingWithData/?p=1494
 # add to data a new column termed "id" composed of the rownames of data
 ces_lat_cc@data$id <- rownames(ces_lat_cc@data)
 
