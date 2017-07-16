@@ -8,8 +8,7 @@ output: github_document
 knitr::opts_chunk$set(echo = TRUE)
 if(!require(tidyverse)){
     install.packages("tidyverse")
-    library(tidyverse)
-}
+    library(tidyverse)}
 ```
 
 ## Setup
@@ -248,6 +247,43 @@ df <- full_join(full_time, air_qual_4901, by = "day") %>%
   mutate(id = as.factor(id)) %>%
   arrange(day)
 ```
+
+### Load Shapefiles
+```{r load Contra Costa County shapefile, message=F, warning=F}
+library(rgdal)
+cc <- readOGR(dsn ="../refinery_data/location/BaseMapGrid", layer = "GRD_PWD_BaseMap_0106") #read shapefile
+summary(cc)
+cc_wgs84 <- spTransform(cc, CRS("+proj=longlat +datum=WGS84 +no_defs")) # convert to lat long
+summary(cc_wgs84)
+coordinates(cc_wgs84)
+plot(cc_wgs84)
+cc_data <- as.owin(cc_wgs84) #convert to dataset for analysis
+```
+
+```{r outside maps}
+library(ggmap)
+library(maps)
+library(RgoogleMaps)
+g <- ggplot(cc.utm, aes(x=long, y=lat)) +   
+        geom_path(aes(group=group)) + coord_map("mercator") 
+geocode("Berkeley, CA", source="google")
+berkeley_loc <- as.numeric(geocode("Berkeley, CA", source="google"))
+states <- map_data("state")  #  See ?map_data for details
+ggplot(states, aes(x=long, y=lat)) +
+  geom_polygon(aes(group=group, fill=region), colour="black", fill="white")
+bgMap = get_map(as.vector(bbox(cc.utm)), source = "google", zoom = 7) # useless without zoom level
+plot(spTransform(cc.utm, merc), bgMap = bgMap, pch = 16, cex = .5)
+merc = CRS("+init=epsg:3857")
+
+center = apply(coordinates(cc.utm), 2, mean)[2:1]
+g = GetMap(center=center, zoom=7) # google
+par(mar = rep(0,4)) # fill full device
+spplot(spTransform(cc.utm, merc), colorkey = TRUE,
+	sp.layout = list(panel.RgoogleMaps, g, first = TRUE),
+	scales = list(draw = TRUE))
+```
+
+
 
 ### Create Moving Window Average
 ```{r moving window, message=F, warning=F}
