@@ -260,7 +260,7 @@ cc <- readOGR(dsn ="../refinery_data/location/BaseMapGrid", layer = "GRD_PWD_Bas
 # summary(cc)
 
 # Converts to longlat figure
-cc_wgs84 <- spTransform(cc, CRS("+proj=longlat +datum=WGS84 +no_defs"))
+cc_wgs84 <- spTransform(cc, CRS("+proj=longlat +datum=WGS84"))
 # summary(cc_wgs84)
 # coordinates(cc_wgs84)
 # plot(cc_wgs84)
@@ -268,18 +268,15 @@ cc_wgs84 <- spTransform(cc, CRS("+proj=longlat +datum=WGS84 +no_defs"))
 # Converts to dataset for analysis
 cc_data <- as.owin(cc_wgs84)
 
-ggplot(cc_wgs84, aes(x=long, y=lat)) +   
+#plot of contra costa county
+r <- ggplot(cc_wgs84, aes(x=long, y=lat)) +   
             geom_path(aes(group=group)) + coord_map("mercator")
 ```
 
 ### Load outside maps
 ```{r outside maps, include=F}
-library(ggmap)
 library(maps)
 library(RgoogleMaps)
-
-# Saves plot of contra costa county
-cc_map <- 
 
 # State data
 states <- map_data("state")
@@ -288,10 +285,40 @@ ggplot(states, aes(x=long, y=lat)) +
 merc = CRS("+init=epsg:3857")
 ccc <- map("county", "california,contra.costa")
 
+# Google Map
+library(ggmap)
+g = get_googlemap("Richmond, CA", scale = 2) # google
+ggmap(g) # Still need to connect with other data (merge?)
 
-center = apply(coordinates(cc_wgs84), 2, mean)[2:1]
-g = GetMap(center=center, zoom=7) # google
+## Load community health assessment data
+ces <- readOGR(dsn ="../refinery_data/location/CES3Results", layer = "CES3Results")
+summary(ces)
+ces_lat <- spTransform(ces, CRS("+proj=longlat +datum=WGS84"))
+View(ces_lat_cc)
+ces_lat_cc <- subset(ces_lat, County == "Contra Costa")
+plot(ces_lat_cc)
 
+# add to data a new column termed "id" composed of the rownames of data
+ces_lat_cc@data$id <- rownames(ces_lat_cc@data)
+
+# create a data.frame from our spatial object
+new_data <- fortify(ces_lat_cc, region = "id")
+
+# merge the "fortified" data with the data from our spatial object
+waterDF <- merge(new_data, ces_lat_cc@data, by = "id")
+
+# Map the cardiovascular instances
+ggplot(waterDF, aes(x=long, y=lat, 
+                    group = group, 
+                    fill = Cardiovasc)) +
+  geom_polygon()  +
+  geom_path(color = "white") +
+  scale_fill_gradient(
+    low = "plum1", high = "purple4",
+    breaks=c(500000,1000000,1500000),
+    labels=c("Low","Medium","High")) +
+  coord_map("mercator") + 
+  ggtitle("Cardiovascular Health")
 
 ```
 
