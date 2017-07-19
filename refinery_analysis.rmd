@@ -7,7 +7,7 @@ output: github_document
 ```{r setup, include=FALSE, echo = F}
 knitr::opts_chunk$set(echo = TRUE)
 # List of R packages
-required_pkg <- c("tidyverse","maptools", "rgdal")
+required_pkg <- c("tidyverse","maptools", "rgdal", "spatstat")
 pkgs_not_installed <- required_pkg[!sapply(required_pkg, function(p) require(p, character.only=T))]
 install.packages(pkgs_not_installed, dependencies=TRUE)
 
@@ -241,6 +241,23 @@ fb_intraday <- fb_intra %>%
 rm(fb_intra, fb_daily)
 ```
 
+### Make data spatial
+```{r, message =F, warning =F}
+library(ggmap)
+# Add in addresses
+m3_locale = as.numeric(geocode("2315 Durant Ave, Berkeley, CA 94704", source="google"))
+m5_locale = as.numeric(geocode("2315 Durant Ave, Berkeley, CA 94704", source="google"))
+m7_locale = as.numeric(geocode("2315 Durant Ave, Berkeley, CA 94704", source="google"))
+
+fb_intraday_test <- fb_intraday %>%
+  mutate(
+    lat = ifelse((id=="m3"), m3_locale[1],
+                 ifelse((id =="m5"), m5_locale[1]))
+  )
+unique(fb_intraday$id)
+
+
+```
 ### Merge the Data
 ```{r create full dataset, message=F, warning=F}
 df <- full_join(full_time, air_qual_4901, by = "day") %>%
@@ -267,10 +284,11 @@ cc_wgs84 <- spTransform(cc, CRS("+proj=longlat +datum=WGS84"))
 
 # Converts to dataset for analysis
 cc_data <- as.owin(cc_wgs84)
-
+??as.owin
 #plot of contra costa county
 r <- ggplot(cc_wgs84, aes(x=long, y=lat)) +   
             geom_path(aes(group=group)) + coord_map("mercator")
+r
 ```
 
 ### Load outside maps
@@ -287,7 +305,7 @@ ccc <- map("county", "california,contra.costa")
 
 # Google Map
 library(ggmap)
-g = get_googlemap("Richmond, CA", scale = 2) # google
+g = get_googlemap("Richmond, CA", scale = 2)
 ggmap(g) # Still need to connect with other data (merge?)
 
 ## Load community health assessment data
@@ -320,6 +338,13 @@ ggplot(waterDF, aes(x=long, y=lat,
     labels=c("Low","Medium","High")) +
   coord_map("mercator") + 
   ggtitle("Cardiovascular Health")
+
+```
+
+### Spatial Analysis
+```{r , warning=F, message=F}
+# moran's i - need a universe of points
+# 
 
 ```
 
