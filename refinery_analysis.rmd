@@ -258,7 +258,8 @@ unique(fb_intraday$id)
 
 
 ```
-### Merge the Data
+
+### Merge the data
 ```{r create full dataset, message=F, warning=F}
 df <- full_join(full_time, air_qual_4901, by = "day") %>%
   full_join(air_qual_4902, by = c("day", "id", "sulfur_dioxide","carbon_monoxide", "ozone")) %>%
@@ -269,7 +270,7 @@ df <- full_join(full_time, air_qual_4901, by = "day") %>%
   arrange(day)
 ```
 
-### Load Shapefiles
+### Load shapefiles
 ```{r load Contra Costa County shapefile, message=F, warning=F}
 # Loads pre-saved file from
 # http://www.contracosta.ca.gov/4475/Maps-and-Data
@@ -338,13 +339,12 @@ ggplot(waterDF, aes(x=long, y=lat,
     labels=c("Low","Medium","High")) +
   coord_map("mercator") + 
   ggtitle("Cardiovascular Health")
-
 ```
 
-### Spatial Analysis
+### Spatial analysis
 ```{r , warning=F, message=F}
 # moran's i - need a universe of points
-# 
+# https://stackoverflow.com/questions/15711013/spatial-autocorrelation-analysis-in-r?rq=1
 
 ```
 
@@ -396,6 +396,7 @@ hr_sd_corr <- correlation_fun(df, quo(heart_rate),quo(sulfur_window),quo(day))
 df$heart_rate[df$heart_rate < 30 & df$heart_rate > 200] <- NA
 correlation_fun(df, quo(heart_rate),quo(methane),quo(day))
 ```
+
 ### Correlation plots
 ```{r plots, warning=F, message=F}
 # Plot of Blood Oxygen and Sulfur Dioxide
