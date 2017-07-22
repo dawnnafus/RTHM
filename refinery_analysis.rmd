@@ -274,6 +274,7 @@ df <- full_join(full_time, air_qual_4901, by = "day") %>%
 ```{r load Contra Costa County shapefile, message=F, warning=F}
 # Loads pre-saved file from
 # http://www.contracosta.ca.gov/4475/Maps-and-Data
+# Projection: NAD 1983 StatePlane California III FIPS 0403 Feet
 cc <- readOGR(dsn ="../refinery_data/location/BaseMapGrid", layer = "GRD_PWD_BaseMap_0106")
 # summary(cc)
 
