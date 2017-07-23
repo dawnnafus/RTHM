@@ -4,7 +4,7 @@ author: "Niklas Lollo"
 output: github_document
 ---
 
-```{r setup, include=FALSE, echo = F}
+```{r setup, include=FALSE, echo=F}
 knitr::opts_chunk$set(echo = TRUE)
 # List of R packages
 required_pkg <- c("tidyverse","maptools", "rgdal", "spatstat")
@@ -17,7 +17,7 @@ lapply(required_pkg, library, character.only = TRUE)
 
 ## Setup
 ### Create timespan of dataset
-```{r time dataset, message = F, warning =F}
+```{r time dataset, message=F, warning=F}
 # Inputs here are date_begin and date_end
 timeframe <- function(date_begin = "2016-05-09 14:00", date_end = "2016-08-11 0:00"){
   exp_begin = as.POSIXct(date_begin, tz="GMT", format="%Y-%m-%d %H")
@@ -139,17 +139,6 @@ paco <- paco %>%
   filter(id == "m3" | id == "m5" | id == "m7" |
       id == "m9" | id == "m10" | id == "m11" |
       id == "m16") %>%
-  mutate(
-    # Add in filtering labels
-    age = ifelse((id == "m3"), 15, 
-                 ifelse((id == "m5"), 20, 
-                        ifelse((id == "m7"), 25, 
-                               ifelse((id == "m9"), 55, 
-                                      ifelse((id=="m10"), 43,
-                                             ifelse((id=="m11"), 45,
-                                                    ifelse((id=="m16"),42,
-                                                           NA)))))))
-  ) %>%
   arrange(t)
 
 # Remove incorrect values
@@ -177,7 +166,7 @@ rm(paco)
 ```
 
 ### Load Fitbit Data
-```{r load fitbit data, message =F, warning = F}
+```{r load fitbit data, message=F, warning=F}
 # Load fitbit data
 fb_body <- read_csv("../refinery_data/fitbit_body_data.csv")
 fb_activities <- read_csv("../refinery_data/fitbit_activities_data.csv")
@@ -241,30 +230,39 @@ fb_intraday <- fb_intra %>%
 rm(fb_intra, fb_daily)
 ```
 
-### Make data spatial
-```{r, message =F, warning =F}
+### Individual Data
+```{r make individual data, message=F, warning=F}
 library(ggmap)
-# Add in addresses
+# Collect addresses
 m3_locale = as.numeric(geocode("2315 Durant Ave, Berkeley, CA 94704", source="google"))
 m5_locale = as.numeric(geocode("2315 Durant Ave, Berkeley, CA 94704", source="google"))
 m7_locale = as.numeric(geocode("2315 Durant Ave, Berkeley, CA 94704", source="google"))
+m9_locale = as.numeric(geocode("2315 Durant Ave, Berkeley, CA 94704", source="google"))
+m10_locale =as.numeric(geocode("2315 Durant Ave, Berkeley, CA 94704", source="google"))
+m11_locale =as.numeric(geocode("2315 Durant Ave, Berkeley, CA 94704", source="google"))
+m16_locale =as.numeric(geocode("2315 Durant Ave, Berkeley, CA 94704", source="google"))
 
-fb_intraday_test <- fb_intraday %>%
-  mutate(
-    lat = ifelse((id=="m3"), m3_locale[1],
-                 ifelse((id =="m5"), m5_locale[1]))
-  )
-unique(fb_intraday$id)
+# Make demographics dataframe
+demographics <- data_frame(
+  id =  c("m3","m5","m7","m9","m10", "m11", "m16"),
+  age = c(21,34,45,33,56,67,51),
+  sex = c("male","female","male","female", "female","male","female"),
+  home_lat = c(m3_locale[2], m5_locale[2], m7_locale[2], 
+          m9_locale[2], m10_locale[2], m11_locale[2], m16_locale[2]),
+  home_long = c(m3_locale[1], m5_locale[1], m7_locale[1], 
+           m9_locale[1], m10_locale[1], m11_locale[1], m16_locale[1]))
 
-
+# Merge with fb_intraday
+fb_intraday <- full_join(fb_intraday, demographics, by = "id")
+paco_hourly <- full_join(paco_hourly, demographics, by = "id")
 ```
 
 ### Merge the data
 ```{r create full dataset, message=F, warning=F}
 df <- full_join(full_time, air_qual_4901, by = "day") %>%
   full_join(air_qual_4902, by = c("day", "id", "sulfur_dioxide","carbon_monoxide", "ozone")) %>%
-  bind_rows(fb_intraday, .id = NULL) %>%
-  bind_rows(paco_hourly, .id = NULL) %>%
+  bind_rows(fb_test, .id = NULL) %>%
+  bind_rows(paco_test, .id = NULL) %>%
   select(day, id, everything()) %>%
   mutate(id = as.factor(id)) %>%
   arrange(day)
@@ -343,7 +341,7 @@ ggplot(waterDF, aes(x=long, y=lat,
 ```
 
 ### Spatial analysis
-```{r , warning=F, message=F}
+```{r spatial analysis, warning=F, message=F}
 # moran's i - need a universe of points
 # https://stackoverflow.com/questions/15711013/spatial-autocorrelation-analysis-in-r?rq=1
 
