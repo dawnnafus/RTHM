@@ -7,7 +7,7 @@ output: github_document
 ```{r setup, include=FALSE, echo=F}
 knitr::opts_chunk$set(echo = TRUE)
 # List of R packages
-required_pkg <- c("tidyverse","maptools", "rgdal", "spatstat")
+required_pkg <- c("tidyverse","maptools", "rgdal", "spatstat", "ggmap")
 pkgs_not_installed <- required_pkg[!sapply(required_pkg, function(p) require(p, character.only=T))]
 install.packages(pkgs_not_installed, dependencies=TRUE)
 
@@ -227,12 +227,12 @@ fb_intraday <- fb_intra %>%
   # Arrange the columns by day
   arrange(id, day)
 
+# Remove original dataframes
 rm(fb_intra, fb_daily)
 ```
 
 ### Individual Data
 ```{r make individual data, message=F, warning=F}
-library(ggmap)
 # Collect addresses
 m3_locale = as.numeric(
   geocode("460 3rd St, Richmond, CA 94801",
@@ -246,37 +246,53 @@ m7_locale = as.numeric(
 m9_locale = as.numeric(
   geocode("1612 Mission Ave, San Pablo, CA 94806",
           source="google"))
-m10_locale =as.numeric(
+m10_locale = as.numeric(
   geocode("1832 4th St, Richmond, CA 94801",
           source="google"))
-m11_locale =as.numeric(
+m11_locale = as.numeric(
   geocode("2836 18th St, San Pablo, CA 94806",
           source="google"))
-m16_locale =as.numeric(
+m16_locale = as.numeric(
   geocode("5733 Oakmont Dr, Richmond, CA 94806",
           source="google"))
 
 # Make demographics dataframe
 demographics <- data_frame(
-  id =  c("m3","m5","m7","m9","m10", "m11", "m16"),
+  id =  c("m3","m5","m7","m9","m10","m11","m16"),
   age = c(21,34,45,33,56,67,51),
-  sex = c("male","female","male","female", "female","male","female"),
+  sex = as.factor(c("male","female","male","female","female","male","female")),
   home_lat = c(m3_locale[2], m5_locale[2], m7_locale[2], 
           m9_locale[2], m10_locale[2], m11_locale[2], m16_locale[2]),
   home_long = c(m3_locale[1], m5_locale[1], m7_locale[1], 
            m9_locale[1], m10_locale[1], m11_locale[1], m16_locale[1]))
 
 # Merge with fb_intraday
-fb_intraday <- full_join(fb_intraday, demographics, by = "id")
-paco_hourly <- full_join(paco_hourly, demographics, by = "id")
+fb_data <- left_join(fb_intraday, demographics, by = "id") %>%
+  ungroup %>%
+  mutate(
+    id = as.factor(id)
+  )
+paco_data <- full_join(paco_hourly, demographics, by = "id") %>%
+  ungroup %>%
+  mutate(
+    id = as.factor(id)
+    )
+
+# Individual data
+individual_data <- fb_data %>%
+  bind_rows(paco_data, .id = NULL)
+
+# Remove unnecessary dataframes
+rm(paco_hourly, fb_intraday)
 ```
 
-### Merge the data
-```{r create full dataset, message=F, warning=F}
-df <- full_join(full_time, air_qual_4901, by = "day") %>%
-  full_join(air_qual_4902, by = c("day", "id", "sulfur_dioxide","carbon_monoxide", "ozone")) %>%
-  bind_rows(fb_intraday, .id = NULL) %>%
-  bind_rows(paco_hourly, .id = NULL) %>%
+### Air Quality Data
+```{r create air quality dataset, message=F, warning=F}
+# Air Quality data
+air_quality <- full_join(full_time, air_qual_4901, by = "day") %>%
+  full_join(air_qual_4902, 
+            by = c("day", "id", "sulfur_dioxide",
+                   "carbon_monoxide", "ozone")) %>%
   select(day, id, everything()) %>%
   mutate(id = as.factor(id)) %>%
   arrange(day)
@@ -390,26 +406,45 @@ df <-
 ## Analysis
 ### Correlations
 ```{r correlations, warning=F, message=F}
-correlation_fun <- function(initial_df, var_1, var_2, var_time) {
-  require(dplyr)
-  ## Make dataframe
-  initial_df %>%
-    select(!!var_1, !!var_2, !!var_time) %>%
-    filter(!is.na(!!var_1) | !is.na(!!var_2))%>% 
-    group_by(!!var_time) %>%
-    summarize(mean_var1 = mean(!!var_1, na.rm=T),
-               mean_var2 = mean(!!var_2, na.rm=T)) %>% 
-    ungroup %>% 
-    filter(!is.na(mean_var1) & !is.na(mean_var2)) %>%
-    select(mean_var1, mean_var2) %>% 
-    boot::corr() %>% 
-    print()
+df<- individual_data %>%
+  filter(sex == "male") %>%
+  bind_rows(air_quality, .id = NULL) %>%
+  select(day, id, everything()) %>%
+  mutate(id = as.factor(id)) %>%
+  arrange(day)
+
+correlation_fun <- function(ind_data = individual_data, air_data = air_quality, 
+                            var_1, var_2, var_time = day, filter_var_1, filter_1) {
+    var_1 <- enquo(var_1)
+    var_2 <- enquo(var_2)
+    var_time <- enquo(var_time)
+    filter_var_1 <- enquo(filter_var_1)
+
+    ## Make dataframe
+    ind_data %>%
+      filter(UQ(filter_var_1) == filter_1) %>%
+      bind_rows(air_data, .id = NULL) %>%
+      mutate(id = as.factor(id)) %>%
+      select(!!var_1, !!var_2, !!var_time) %>%
+      filter(!is.na(!!var_1) | !is.na(!!var_2))%>%
+      group_by(!!var_time) %>%
+      summarize(mean_var1 = mean(!!var_1, na.rm=T),
+                mean_var2 = mean(!!var_2, na.rm=T)) %>% 
+      ungroup %>%
+      filter(!is.na(mean_var1) & !is.na(mean_var2)) %>%
+      select(mean_var1, mean_var2) %>% 
+      boot::corr() %>% 
+      print()
 }
 # https://rpubs.com/hadley/dplyr-programming 
 # See this for quosures and programming with dplyr
 
+
 ## Blood Oxygen and Sulfur Dioxide
-correlation_fun(df, quo(blood_oxygen),quo(sulfur_window),quo(day))
+correlation_fun(var_1 = heart_rate, 
+                var_2 = methane,
+                filter_var_1 = sex,
+                filter_1 = "female")
 ## Heart Rate and Sulfur Dioxide
 hr_sd_corr <- correlation_fun(df, quo(heart_rate),quo(sulfur_window),quo(day))
 ## Heart Rate and Methane
