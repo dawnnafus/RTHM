@@ -234,13 +234,13 @@ rm(fb_intra, fb_daily)
 ```{r make individual data, message=F, warning=F}
 library(ggmap)
 # Collect addresses
-m3_locale = as.numeric(geocode("2315 Durant Ave, Berkeley, CA 94704", source="google"))
-m5_locale = as.numeric(geocode("2315 Durant Ave, Berkeley, CA 94704", source="google"))
-m7_locale = as.numeric(geocode("2315 Durant Ave, Berkeley, CA 94704", source="google"))
-m9_locale = as.numeric(geocode("2315 Durant Ave, Berkeley, CA 94704", source="google"))
-m10_locale =as.numeric(geocode("2315 Durant Ave, Berkeley, CA 94704", source="google"))
-m11_locale =as.numeric(geocode("2315 Durant Ave, Berkeley, CA 94704", source="google"))
-m16_locale =as.numeric(geocode("2315 Durant Ave, Berkeley, CA 94704", source="google"))
+m3_locale = as.numeric(geocode("460 3rd St, Richmond, CA 94801", source="google"))
+m5_locale = as.numeric(geocode("460 3rd St, Richmond, CA 94801", source="google"))
+m7_locale = as.numeric(geocode("460 3rd St, Richmond, CA 94801", source="google"))
+m9_locale = as.numeric(geocode("460 3rd St, Richmond, CA 94801", source="google"))
+m10_locale =as.numeric(geocode("460 3rd St, Richmond, CA 94801", source="google"))
+m11_locale =as.numeric(geocode("460 3rd St, Richmond, CA 94801", source="google"))
+m16_locale =as.numeric(geocode("460 3rd St, Richmond, CA 94801", source="google"))
 
 # Make demographics dataframe
 demographics <- data_frame(
