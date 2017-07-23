@@ -234,13 +234,27 @@ rm(fb_intra, fb_daily)
 ```{r make individual data, message=F, warning=F}
 library(ggmap)
 # Collect addresses
-m3_locale = as.numeric(geocode("460 3rd St, Richmond, CA 94801", source="google"))
-m5_locale = as.numeric(geocode("460 3rd St, Richmond, CA 94801", source="google"))
-m7_locale = as.numeric(geocode("460 3rd St, Richmond, CA 94801", source="google"))
-m9_locale = as.numeric(geocode("460 3rd St, Richmond, CA 94801", source="google"))
-m10_locale =as.numeric(geocode("460 3rd St, Richmond, CA 94801", source="google"))
-m11_locale =as.numeric(geocode("460 3rd St, Richmond, CA 94801", source="google"))
-m16_locale =as.numeric(geocode("460 3rd St, Richmond, CA 94801", source="google"))
+m3_locale = as.numeric(
+  geocode("460 3rd St, Richmond, CA 94801",
+          source="google"))
+m5_locale = as.numeric(
+  geocode("2515 Downer Ave, Richmond, CA 94804",
+          source="google"))
+m7_locale = as.numeric(
+  geocode("2640 Esmond Ave, Richmond, CA 94804",
+          source="google"))
+m9_locale = as.numeric(
+  geocode("1612 Mission Ave, San Pablo, CA 94806",
+          source="google"))
+m10_locale =as.numeric(
+  geocode("1832 4th St, Richmond, CA 94801",
+          source="google"))
+m11_locale =as.numeric(
+  geocode("2836 18th St, San Pablo, CA 94806",
+          source="google"))
+m16_locale =as.numeric(
+  geocode("5733 Oakmont Dr, Richmond, CA 94806",
+          source="google"))
 
 # Make demographics dataframe
 demographics <- data_frame(
@@ -261,8 +275,8 @@ paco_hourly <- full_join(paco_hourly, demographics, by = "id")
 ```{r create full dataset, message=F, warning=F}
 df <- full_join(full_time, air_qual_4901, by = "day") %>%
   full_join(air_qual_4902, by = c("day", "id", "sulfur_dioxide","carbon_monoxide", "ozone")) %>%
-  bind_rows(fb_test, .id = NULL) %>%
-  bind_rows(paco_test, .id = NULL) %>%
+  bind_rows(fb_intraday, .id = NULL) %>%
+  bind_rows(paco_hourly, .id = NULL) %>%
   select(day, id, everything()) %>%
   mutate(id = as.factor(id)) %>%
   arrange(day)
@@ -284,11 +298,18 @@ cc_wgs84 <- spTransform(cc, CRS("+proj=longlat +datum=WGS84"))
 
 # Converts to dataset for analysis
 cc_data <- as.owin(cc_wgs84)
-??as.owin
+
 #plot of contra costa county
 r <- ggplot(cc_wgs84, aes(x=long, y=lat)) +   
             geom_path(aes(group=group)) + coord_map("mercator")
-r
+r + 
+  geom_point(aes(x= demographics$home_long[1], y=demographics$home_lat[1])) +
+  geom_point(aes(x= demographics$home_long[2], y=demographics$home_lat[2])) +
+  geom_point(aes(x= demographics$home_long[3], y=demographics$home_lat[3])) +
+  geom_point(aes(x= demographics$home_long[4], y=demographics$home_lat[4])) +
+  geom_point(aes(x= demographics$home_long[5], y=demographics$home_lat[5])) +
+  geom_point(aes(x= demographics$home_long[6], y=demographics$home_lat[6])) +
+  geom_point(aes(x= demographics$home_long[7], y=demographics$home_lat[7]))
 ```
 
 ### Load outside maps
