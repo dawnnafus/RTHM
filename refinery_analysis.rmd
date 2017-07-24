@@ -303,8 +303,8 @@ air_quality <- full_join(full_time, air_qual_4901, by = "day") %>%
 # Set hours of interest
 hours = 5
 # Moving window average of sulfur dioxide
-df <- 
-  df %>% 
+air_quality <- 
+  air_quality %>% 
   group_by(id) %>% 
   arrange(day) %>%
   mutate(sulfur_window = zoo::rollapply(sulfur_dioxide, 
@@ -338,10 +338,11 @@ correlation <- function(ind_data = individual_data, air_data = air_quality,
       ungroup %>%
       filter(!is.na(mean_var1) & !is.na(mean_var2)) %>%
       select(mean_var1, mean_var2) %>% 
-      boot::corr() %>% 
-      print()
+      boot::corr() -> x
+      x <- round(x, 3)
+      y <- paste0("The correlation between ",var_1, " & ",var_2, " is ",x,".")
+      cat(y[2])
 }
-
 # One filter function
 # Note: this function only works for "==" not < or >
 correlation_one_filter <- function(ind_data = individual_data, air_data = air_quality, 
@@ -363,8 +364,10 @@ correlation_one_filter <- function(ind_data = individual_data, air_data = air_qu
       ungroup %>%
       filter(!is.na(mean_var1) & !is.na(mean_var2)) %>%
       select(mean_var1, mean_var2) %>% 
-      boot::corr() %>% 
-      print()
+      boot::corr() -> x
+      x <- round(x, 3)
+      y <- paste0("The correlation between ",var_1, " & ",var_2, " is ",x, " after filtering for ",filter_1,".")
+      cat(y[2])
 }
 # https://rpubs.com/hadley/dplyr-programming 
 # See this for quosures and programming with dplyr
@@ -411,8 +414,18 @@ correlation_one_filter(ind_data = ind_data_hr,
 
 ### Correlation plots
 ```{r plots, warning=F, message=F}
+# Create ggplot theme
+theme_fair_tech <- theme(
+  legend.position = "bottom",
+  panel.background = element_rect(fill = NA),
+  # panel.border = element_rect(fill = NA, color = "grey75"),
+  axis.ticks = element_line(color = "grey95", size = 0.3),
+  panel.grid.major = element_line(color = "grey95", size = 0.3),
+  panel.grid.minor = element_line(color = "grey95", size = 0.3),
+  legend.key = element_blank())
+
 # Plot of Blood Oxygen and Sulfur Dioxide
-ind_data %>%
+individual_data %>%
   #filter(age > 50 & sex == "male") %>%
   bind_rows(air_quality, .id = NULL) %>%
   select(blood_oxygen, sulfur_window, day) %>%
@@ -423,12 +436,18 @@ ind_data %>%
   ungroup %>%
   filter(!is.na(mean_bo) & !is.na(mean_sd)) %>%
   ggplot(aes(x= mean_sd, y= mean_bo)) + 
-  geom_point()+
-  geom_smooth(method = "lm", se=F)
+  geom_point() +
+  geom_smooth(method = "lm", se=F) +
+  theme_fair_tech + 
+  xlab("Sulfur Dioxide") +
+  ylab("Blood Oxygen") +
+  ggtitle("Correlation between Blood Oxygen and Sulfur Dioxide",
+    subtitle = "Fair Tech Collective"
+    )
 # Only 43 datapoints
 
 # Plot of heart rate and Sulfur Dioxide
-ind_data %>%
+individual_data %>%
   filter(heart_rate > 30 & heart_rate < 200) %>%
   #filter(age > 50 & sex == "male") %>%
   bind_rows(air_quality, .id = NULL) %>%
@@ -441,10 +460,16 @@ ind_data %>%
   filter(!is.na(mean_hr) & !is.na(mean_sd)) %>%
   ggplot(aes(x= mean_sd, y= mean_hr)) + 
   geom_point()+
-  geom_smooth(method = "lm", se=F)
+  geom_smooth(method = "lm", se=F) +
+  theme_fair_tech + 
+  xlab("Sulfur Dioxide") +
+  ylab("Heart Rate") +
+  ggtitle("Correlation between Heart Rate and Sulfur Dioxide",
+    subtitle = "Fair Tech Collective"
+    )
 
 # Plot of heart rate and methane
-ind_data %>%
+individual_data %>%
   filter(heart_rate > 30 & heart_rate < 200) %>%
   #filter(age > 50 & sex == "male") %>%
   bind_rows(air_quality, .id = NULL) %>%
@@ -457,7 +482,13 @@ ind_data %>%
   filter(!is.na(mean_hr) & !is.na(mean_m)) %>%
   ggplot(aes(x= mean_m, y= mean_hr)) + 
   geom_point()+
-  geom_smooth(method = "lm", se=F)
+  geom_smooth(method = "lm", se=F) + 
+  theme_fair_tech + 
+  xlab("Methane") +
+  ylab("Heart Rate") +
+  ggtitle("Correlation between Heart Rate and Methane",
+    subtitle = "Fair Tech Collective"
+    )
 ```
 
 ### Chi-Squared Tests
