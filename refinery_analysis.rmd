@@ -564,3 +564,90 @@ temp_bosd<- ind_data %>%
 mean_bo<- mean(individual_data$blood_oxygen, na.rm=T)
 t.test(temp_bosd$mean_bo, mu = mean_bo)
 ```
+
+## Spatial Analysis
+### Load shapefiles
+```{r load Contra Costa County shapefile, message=F, warning=F}
+# Loads pre-saved file from
+# http://www.contracosta.ca.gov/4475/Maps-and-Data
+# Projection: NAD 1983 StatePlane California III FIPS 0403 Feet
+cc <- readOGR(dsn ="../refinery_data/location/BaseMapGrid", layer = "GRD_PWD_BaseMap_0106")
+# summary(cc)
+
+# Converts to longlat figure
+cc_wgs84 <- spTransform(cc, CRS("+proj=longlat +datum=WGS84"))
+# summary(cc_wgs84)
+# coordinates(cc_wgs84)
+# plot(cc_wgs84)
+
+# Converts to dataset for analysis
+cc_data <- as.owin(cc_wgs84)
+
+#plot of contra costa county
+r <- ggplot(cc_wgs84, aes(x=long, y=lat)) +   
+            geom_path(aes(group=group)) + coord_map("mercator")
+r + 
+  geom_point(aes(x= demographics$home_long[1], y=demographics$home_lat[1])) +
+  geom_point(aes(x= demographics$home_long[2], y=demographics$home_lat[2])) +
+  geom_point(aes(x= demographics$home_long[3], y=demographics$home_lat[3])) +
+  geom_point(aes(x= demographics$home_long[4], y=demographics$home_lat[4])) +
+  geom_point(aes(x= demographics$home_long[5], y=demographics$home_lat[5])) +
+  geom_point(aes(x= demographics$home_long[6], y=demographics$home_lat[6])) +
+  geom_point(aes(x= demographics$home_long[7], y=demographics$home_lat[7]))
+```
+
+### Load outside maps
+```{r outside maps, include=F}
+library(maps)
+library(RgoogleMaps)
+
+# State data
+states <- map_data("state")
+ggplot(states, aes(x=long, y=lat)) +
+  geom_polygon(aes(group=group, fill=region), colour="black", fill="white")
+merc = CRS("+init=epsg:3857")
+ccc <- map("county", "california,contra.costa")
+
+# Google Map
+library(ggmap)
+g = get_googlemap("Richmond, CA", scale = 2)
+ggmap(g) # Still need to connect with other data (merge?)
+
+## Load community health assessment data
+ces <- readOGR(dsn ="../refinery_data/location/CES3Results", layer = "CES3Results")
+summary(ces)
+ces_lat <- spTransform(ces, CRS("+proj=longlat +datum=WGS84"))
+View(ces_lat_cc)
+ces_lat_cc <- subset(ces_lat, County == "Contra Costa")
+plot(ces_lat_cc)
+
+# http://mazamascience.com/WorkingWithData/?p=1494
+# add to data a new column termed "id" composed of the rownames of data
+ces_lat_cc@data$id <- rownames(ces_lat_cc@data)
+
+# create a data.frame from our spatial object
+new_data <- fortify(ces_lat_cc, region = "id")
+
+# merge the "fortified" data with the data from our spatial object
+waterDF <- merge(new_data, ces_lat_cc@data, by = "id")
+
+# Map the cardiovascular instances
+ggplot(waterDF, aes(x=long, y=lat, 
+                    group = group, 
+                    fill = Cardiovasc)) +
+  geom_polygon()  +
+  geom_path(color = "white") +
+  scale_fill_gradient(
+    low = "plum1", high = "purple4",
+    breaks=c(500000,1000000,1500000),
+    labels=c("Low","Medium","High")) +
+  coord_map("mercator") + 
+  ggtitle("Cardiovascular Health")
+```
+
+### Spatial analysis
+```{r spatial analysis, warning=F, message=F}
+# moran's i - need a universe of points
+# https://stackoverflow.com/questions/15711013/spatial-autocorrelation-analysis-in-r?rq=1
+
+```
