@@ -496,7 +496,7 @@ individual_data %>%
 # Will need to apply filters here as well
 
 # Heart rate and methane
-temp_hrm<- ind_data %>%
+temp_hrm<- individual_data %>%
   filter(heart_rate > 30 & heart_rate < 200) %>%
   #filter(age > 50 & sex == "male") %>%
   bind_rows(air_quality, .id = NULL) %>%
@@ -514,7 +514,7 @@ t.test(temp_hrm$mean_hr, mu = mean_pop_hr)
 # Here we see methane above its mean value is associated with a heart rate decrease of about 4 points 
 
 # Heart rate and sulfur dioxide
-temp_hrsd<- ind_data %>%
+temp_hrsd<- individual_data %>%
   filter(heart_rate > 30 & heart_rate < 200) %>%
   #filter(age > 50 & sex == "male") %>%
   bind_rows(air_quality, .id = NULL) %>%
@@ -530,11 +530,11 @@ temp_hrsd<- ind_data %>%
 t.test(temp_hrsd$mean_hr, mu = mean_pop_hr)
 
 # Blood oxygen and sulfur dioxide
-temp_bosd<- ind_data %>%
-  #filter(heart_rate > 30 & heart_rate < 200) %>% # May want to keep the same filter
+temp_bosd<- individual_data %>%
+  filter(heart_rate > 30 & heart_rate < 200) %>% # May want to keep the same filter
   #filter(age > 50 & sex == "male") %>%
   bind_rows(air_quality, .id = NULL) %>%
-  select(heart_rate, sulfur_window, day) %>%
+  select(blood_oxygen, sulfur_window, day) %>%
   filter(!is.na(blood_oxygen) | !is.na(sulfur_window)) %>% 
   group_by(day) %>%
   summarize(mean_bo = mean(blood_oxygen, na.rm=T),
@@ -544,5 +544,6 @@ temp_bosd<- ind_data %>%
   filter(mean_sd > mean(mean_sd))
 
 mean_bo<- mean(individual_data$blood_oxygen, na.rm=T)
-t.test(temp_bosd$mean_bo, mu = mean_bo)
+#t.test(temp_bosd$mean_bo, mu = mean_bo)
+# Error: not enough x observations
 ```
