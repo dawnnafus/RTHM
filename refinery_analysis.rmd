@@ -436,9 +436,45 @@ correlation_fun <- function(ind_data = individual_data, air_data = air_quality,
       boot::corr() %>% 
       print()
 }
+
+correlation_fun <- function(ind_data = individual_data, air_data = air_quality, 
+                            var_1, var_2, var_time = day, 
+                            filters = ...,
+                            types = ...,
+                            conditions= ...) {
+    var_1 <- enquo(var_1)
+    var_2 <- enquo(var_2)
+    var_time <- enquo(var_time)
+    filters <- quos(filters)
+    types <- quos(types)
+    conditions <- quos(conditions)
+
+    ## Make dataframe
+    ind_data %>%
+      filter(!!!filters !!!types !!!conditions) %>%
+      bind_rows(air_data, .id = NULL) %>%
+      mutate(id = as.factor(id)) %>%
+      select(!!var_1, !!var_2, !!var_time) %>%
+      filter(!is.na(!!var_1) | !is.na(!!var_2))%>%
+      group_by(!!var_time) %>%
+      summarize(mean_var1 = mean(!!var_1, na.rm=T),
+                mean_var2 = mean(!!var_2, na.rm=T)) %>% 
+      ungroup %>%
+      filter(!is.na(mean_var1) & !is.na(mean_var2)) %>%
+      select(mean_var1, mean_var2) %>% 
+      boot::corr() %>% 
+      print()
+}
 # https://rpubs.com/hadley/dplyr-programming 
 # See this for quosures and programming with dplyr
 
+# Alternative to coding in multiple filters is to ask the user to create filters. 
+# Downside is it will be more interaction with actual code. Upside is it can be done. 
+correlation_fun(var_1 = heart_rate, 
+                var_2 = methane,
+                filters = list(sex, age),
+                types = list("==", ">"),
+                conditions = list("male", 50))
 
 ## Blood Oxygen and Sulfur Dioxide
 correlation_fun(var_1 = heart_rate, 
