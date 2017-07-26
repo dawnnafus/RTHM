@@ -320,6 +320,12 @@ ind_data_filtered <- individual_data %>%
 filter_statement <- paste0("NOTE: This analysis looks at men over 50.")
 cat(filter_statement)
 ```
+# Notes on Data Sources
+Methane and sulfur dioxide readings collected daily by [Fenceline.org](fenceline.org)
+
+Heart rate collected with Fitbit health monitors
+
+Blood Oxygen levels recorded with a pulse oximeter^[[Pulse Oximetry wiki](https://en.wikipedia.org/wiki/Pulse_oximetry)]
 
 # Correlations
 To read a correlation, visit this page: https://www.mathsisfun.com/data/images/correlation-examples.svg
@@ -437,8 +443,8 @@ ind_data_filtered %>%
   geom_point() +
   geom_smooth(method = "lm", se=F) +
   theme_fair_tech + 
-  labs(x=expression(paste("Sulfur Dioxide ( ", degree ~ F, " )")), 
-       y=expression(paste("Blood Oxygen ( ", degree ~ F, " )"))) +
+  labs(x=expression(paste("Sulfur Dioxide (", ppb,")")), 
+       y=expression(paste("Blood Oxygen (", `%`, ")"))) +
   # Need to figure out units
   ggtitle("Blood Oxygen and Sulfur Dioxide",
     subtitle = "Correlation") + 
@@ -460,8 +466,8 @@ ind_data_hr %>%
   geom_point()+
   geom_smooth(method = "lm", se=F) +
   theme_fair_tech + 
-  labs(x=expression(paste("Sulfur Dioxide ( ", degree ~ F, " )")), 
-       y=expression(paste("Heart Rate ( ", BPM, " )"))) +
+  labs(x=expression(paste("Sulfur Dioxide (", ppb, ")")), 
+       y=expression(paste("Heart Rate (", BPM, ")"))) +
   # Need to figure out units
   ggtitle("Heart Rate and Sulfur Dioxide",
     subtitle = "Correlation") + 
@@ -482,8 +488,8 @@ ind_data_hr %>%
   geom_point()+
   geom_smooth(method = "lm", se=F) + 
   theme_fair_tech + 
-  labs(x=expression(paste("Methane ( ", degree ~ F, " )")), 
-       y=expression(paste("Heart Rate ( ", BPM, " )"))) +
+  labs(x=expression(paste("Methane (", ppb, ")")), 
+       y=expression(paste("Heart Rate (", BPM, ")"))) +
   ggtitle("Heart Rate and Methane",
     subtitle = "Correlation"
     ) + 
@@ -491,8 +497,8 @@ ind_data_hr %>%
             label = paste0("r = ", corr_hrm))
 ```
 
-## T-Tests for Statistical Significance
-These tests compare the difference between the population mean health outcome (e.g. heart rate) and the mean health outcome when the environmental input (e.g. methane) is above its median value. 
+## T-Tests^[Welch two-sample t-test] for Statistical Significance
+These tests compare the difference between the population mean health outcome (e.g. heart rate) and the mean health outcome when the environmental input (e.g. methane) is above its median value.
 
 ```{r t test, message=F, warning=F, echo=F}
 # http://statistics.berkeley.edu/computing/r-t-tests
@@ -512,11 +518,10 @@ temp_hrm <- ind_data_hr %>%
 mean_pop_hr <- mean(ind_data_hr$heart_rate, na.rm=T)
 mean_samp_hr <- mean(temp_hrm$mean_hr, na.rm=T)
   
-cat("Heart Rate and Methane")
-t.test(x = temp_hrm$mean_hr, y = ind_data_hr$heart_rate)
+t_hrm <- t.test(x = temp_hrm$mean_hr, y = ind_data_hr$heart_rate)
+
 # t.test(temp_hrm$mean_hr, mu = mean_pop_hr)
 # Both work fine but above one corrects for difference variances
-# Here we see methane above its mean value is associated with a heart rate decrease of about 4 points 
 
 # Heart rate and sulfur dioxide
 temp_hrsd<- ind_data_hr %>%
@@ -530,8 +535,7 @@ temp_hrsd<- ind_data_hr %>%
   filter(!is.na(mean_hr) & !is.na(mean_sd)) %>%
   filter(mean_sd > mean(mean_sd))
 
-cat("Heart Rate and Sulfur Dioxide")
-t.test(x = temp_hrsd$mean_hr, y = ind_data_hr$heart_rate)
+t_hrsd <- t.test(x = temp_hrsd$mean_hr, y = ind_data_hr$heart_rate)
 #t.test(temp_hrsd$mean_hr, mu = mean_pop_hr)
 
 # Blood oxygen and sulfur dioxide
@@ -547,8 +551,18 @@ temp_bosd<- ind_data_filtered %>%
   filter(mean_sd > mean(mean_sd))
 
 mean_bo<- mean(ind_data_filtered$blood_oxygen, na.rm=T)
-cat("Blood Oxygen and Sulfur Dioxide")
-t.test(x = temp_bosd$mean_bo, y = ind_data_filtered$blood_oxygen)
-t.test(temp_bosd$mean_bo, mu = mean_bo)
-# Error: not enough observations
+t_bosd <- t.test(x = temp_bosd$mean_bo, y = ind_data_filtered$blood_oxygen)
+#t.test(temp_bosd$mean_bo, mu = mean_bo)
+
+p_values <- data.frame("blood oxygen" = c(t_bosd$p.value,NA),
+                       "heart rate" = c(t_hrsd$p.value,t_hrm$p.value))
+rownames(p_values) <- c("sulfur dioxide", "methane")
+colnames(p_values) <- c("blood oxygen", "heart rate")
+
+pander::pandoc.table(p_values,
+                     caption = "p-values from the Welch two-sample t-tests",
+                     justify = "center",
+                     round = 3,
+                     keep.line.breaks =T
+                     )
 ```
