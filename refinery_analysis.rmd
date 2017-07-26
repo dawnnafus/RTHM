@@ -1,23 +1,21 @@
 ---
-title: "Refinery Analysis"
+title: "Linking Health Outcomes to Refinery Emissions in the Bay Area"
 author: "Niklas Lollo"
-output: github_document
+output: html_document
 ---
 
 ```{r setup, include=FALSE, echo=F}
 knitr::opts_chunk$set(echo = TRUE)
 # List of R packages
 required_pkg <- c("tidyverse","maptools", "rgdal", "spatstat", "ggmap")
-pkgs_not_installed <- required_pkg[!sapply(required_pkg, function(p) require(p, character.only=T))]
-install.packages(pkgs_not_installed, dependencies=TRUE)
+#pkgs_not_installed <- required_pkg[!sapply(required_pkg, function(p) require(p, character.only=T))]
+#install.packages(pkgs_not_installed, dependencies=TRUE)
 
 # Load all libraries at once.
 lapply(required_pkg, library, character.only = TRUE) 
 ```
 
-## Setup
-### Create timespan of dataset
-```{r time dataset, message=F, warning=F}
+```{r time dataset, message=F, warning=F, echo=F}
 # Inputs here are date_begin and date_end
 timeframe <- function(date_begin = "2016-05-09 14:00", date_end = "2016-08-11 0:00"){
   exp_begin = as.POSIXct(date_begin, tz="GMT", format="%Y-%m-%d %H")
@@ -33,8 +31,7 @@ exp_begin = as.POSIXct(date_begin, tz="GMT", format="%Y-%m-%d %H")
 exp_end = as.POSIXct(date_end, tz="GMT", format="%Y-%m-%d %H")
 ```
 
-### Load Air Quality Data
-```{r load air quality data, warning=F, message=F}
+```{r load air quality data, warning=F, message=F, echo=F}
 # load air quality data
 feed_4902 <- read_csv("../refinery_data/airQuality_feed4902_data.csv")
 feed_4901 <- read_csv("../refinery_data/airQuality_feed4901_data.csv")
@@ -102,8 +99,7 @@ rm(hourly_4902, hourly_4902_methane)
 rm(feed_4901, feed_4902,feed_4902_methane)
 ```
 
-### Load Paco Data
-```{r load paco data, warning=F, message=F}
+```{r load paco data, warning=F, message=F, echo=F}
 # load paco data
 paco <- read_csv("../refinery_data/paco_all.csv")
 
@@ -165,8 +161,7 @@ paco_hourly <- paco %>%
 rm(paco)
 ```
 
-### Load Fitbit Data
-```{r load fitbit data, message=F, warning=F}
+```{r load fitbit data, message=F, warning=F, echo=F}
 # Load fitbit data
 fb_body <- read_csv("../refinery_data/fitbit_body_data.csv")
 fb_activities <- read_csv("../refinery_data/fitbit_activities_data.csv")
@@ -231,8 +226,7 @@ fb_intraday <- fb_intra %>%
 rm(fb_intra, fb_daily)
 ```
 
-### Individual Data
-```{r make individual data, message=F, warning=F}
+```{r make individual data, message=F, warning=F, echo=F}
 # Collect addresses
 m3_locale = as.numeric(
   geocode("460 3rd St, Richmond, CA 94801",
@@ -286,8 +280,7 @@ individual_data <- fb_data %>%
 rm(paco_hourly, fb_intraday)
 ```
 
-### Air Quality Data
-```{r create air quality dataset, message=F, warning=F}
+```{r create air quality dataset, message=F, warning=F, echo=F}
 # Air Quality data
 air_quality <- full_join(full_time, air_qual_4901, by = "day") %>%
   full_join(air_qual_4902, 
@@ -298,8 +291,7 @@ air_quality <- full_join(full_time, air_qual_4901, by = "day") %>%
   arrange(day)
 ```
 
-### Create Moving Window Average
-```{r moving window, message=F, warning=F}
+```{r moving window, message=F, warning=F, echo=F}
 # Set hours of interest
 hours = 5
 # Moving window average of sulfur dioxide
@@ -319,7 +311,8 @@ air_quality <-
 
 ## Analysis
 ### Correlations
-```{r correlations, warning=F, message=F}
+To read a correlation, visit this page: https://www.mathsisfun.com/data/images/correlation-examples.svg
+```{r correlations, warning=F, message=F, echo=F}
 # No filter function
 correlation <- function(ind_data = individual_data, air_data = air_quality, 
                             var_1, var_2, var_time = day) {
@@ -366,7 +359,7 @@ correlation_one_filter <- function(ind_data = individual_data, air_data = air_qu
       select(mean_var1, mean_var2) %>% 
       boot::corr() -> x
       x <- round(x, 3)
-      y <- paste0("The correlation between ",var_1, " & ",var_2, " is ",x, " after filtering for ",filter_1,".")
+      y <- paste0("The correlation between ",var_1, " & ",var_2, " is ",x, " among ",filter_1,"s.")
       cat(y[2])
 }
 # https://rpubs.com/hadley/dplyr-programming 
@@ -413,7 +406,7 @@ correlation_one_filter(ind_data = ind_data_hr,
 ```
 
 ### Correlation plots
-```{r plots, warning=F, message=F}
+```{r plots, warning=F, message=F, echo=F}
 # Create ggplot theme
 theme_fair_tech <- theme(
   legend.position = "bottom",
