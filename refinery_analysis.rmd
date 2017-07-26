@@ -7,6 +7,7 @@ output:
 ---
 
 ```{r setup, include=FALSE, echo=F}
+# http://rmarkdown.rstudio.com/index.html
 knitr::opts_chunk$set(echo = TRUE)
 # List of R packages
 required_pkg <- c("tidyverse","maptools", "rgdal", "spatstat", "ggmap")
@@ -416,6 +417,7 @@ corr_hrm <- correlation_num(
 
 ## Correlation plots
 ```{r plots, warning=F, message=F, echo=F}
+# http://zevross.com/blog/2014/08/04/beautiful-plotting-in-r-a-ggplot2-cheatsheet-3/#add-text-annotation-in-the-top-right-top-left-etc.-annotation_custom-and-friends
 # Create ggplot theme
 theme_fair_tech <- theme(
   legend.position = "bottom",
@@ -559,6 +561,7 @@ p_values <- data.frame("blood oxygen" = c(t_bosd$p.value,NA),
 rownames(p_values) <- c("sulfur dioxide", "methane")
 colnames(p_values) <- c("blood oxygen", "heart rate")
 
+# http://galahad.well.ox.ac.uk/repro/#footnotes
 knitr::kable(p_values,
              digits = 4,
              caption = "p-values from the Welch two-sample t-tests",
