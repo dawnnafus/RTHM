@@ -456,12 +456,10 @@ ind_data_hr %>%
 These tests compare the difference between the population mean health outcome (e.g. heart rate) and the mean health outcome when the environmental input (e.g. methane) is above its median value. 
 
 ```{r t test, message=F, warning=F, echo=F}
-# Will need to apply filters here as well
 # http://statistics.berkeley.edu/computing/r-t-tests
 
 # Heart rate and methane
 temp_hrm <- ind_data_hr %>%
-  #filter(age > 50 & sex == "male") %>%
   bind_rows(air_quality, .id = NULL) %>%
   select(heart_rate, methane, day) %>%
   filter(!is.na(heart_rate) | !is.na(methane)) %>%  
@@ -483,7 +481,6 @@ t.test(x = temp_hrm$mean_hr, y = ind_data_hr$heart_rate)
 
 # Heart rate and sulfur dioxide
 temp_hrsd<- ind_data_hr %>%
-  #filter(age > 50 & sex == "male") %>%
   bind_rows(air_quality, .id = NULL) %>%
   select(heart_rate, sulfur_window, day) %>%
   filter(!is.na(heart_rate) | !is.na(sulfur_window)) %>% 
@@ -499,8 +496,7 @@ t.test(x = temp_hrsd$mean_hr, y = ind_data_hr$heart_rate)
 #t.test(temp_hrsd$mean_hr, mu = mean_pop_hr)
 
 # Blood oxygen and sulfur dioxide
-temp_bosd<- individual_data %>%
-  #filter(age > 50 & sex == "male") %>%
+temp_bosd<- ind_data_filtered %>%
   bind_rows(air_quality, .id = NULL) %>%
   select(blood_oxygen, sulfur_window, day) %>%
   filter(!is.na(blood_oxygen) | !is.na(sulfur_window)) %>% 
@@ -511,9 +507,9 @@ temp_bosd<- individual_data %>%
   filter(!is.na(mean_bo) & !is.na(mean_sd)) %>%
   filter(mean_sd > mean(mean_sd))
 
-mean_bo<- mean(individual_data$blood_oxygen, na.rm=T)
+mean_bo<- mean(ind_data_filtered$blood_oxygen, na.rm=T)
 cat("Blood Oxygen and Sulfur Dioxide")
-t.test(x = temp_bosd$mean_bo, y = individual_data$blood_oxygen)
+t.test(x = temp_bosd$mean_bo, y = ind_data_filtered$blood_oxygen)
 t.test(temp_bosd$mean_bo, mu = mean_bo)
 # Error: not enough observations
 ```
