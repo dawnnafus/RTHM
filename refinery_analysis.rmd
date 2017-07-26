@@ -497,7 +497,7 @@ ind_data_hr %>%
             label = paste0("r = ", corr_hrm))
 ```
 
-## T-Tests^[Welch two-sample t-test] for Statistical Significance
+## T-Tests for Statistical Significance^[Welch two-sample t-test]
 These tests compare the difference between the population mean health outcome (e.g. heart rate) and the mean health outcome when the environmental input (e.g. methane) is above its median value.
 
 ```{r t test, message=F, warning=F, echo=F}
@@ -559,10 +559,9 @@ p_values <- data.frame("blood oxygen" = c(t_bosd$p.value,NA),
 rownames(p_values) <- c("sulfur dioxide", "methane")
 colnames(p_values) <- c("blood oxygen", "heart rate")
 
-pander::pandoc.table(p_values,
-                     caption = "p-values from the Welch two-sample t-tests",
-                     justify = "center",
-                     round = 3,
-                     keep.line.breaks =T
-                     )
+knitr::kable(p_values,
+             digits = 4,
+             caption = "p-values from the Welch two-sample t-tests",
+             align = "c",
+             knitr.table.format = 'html')
 ```
