@@ -1,7 +1,7 @@
 ---
 title: "Linking Health Outcomes to Refinery Emissions in the Bay Area"
 author: "Niklas Lollo"
-output: github_document
+output: html_document
 ---
 
 ```{r setup, include=FALSE, echo=F}
@@ -311,6 +311,7 @@ air_quality <-
 
 ## Analysis
 ### Correlations
+To read a correlation, visit this page: https://www.mathsisfun.com/data/images/correlation-examples.svg
 ```{r correlations, warning=F, message=F, echo=F}
 # No filter function
 correlation <- function(ind_data = individual_data, air_data = air_quality, 
@@ -358,7 +359,7 @@ correlation_one_filter <- function(ind_data = individual_data, air_data = air_qu
       select(mean_var1, mean_var2) %>% 
       boot::corr() -> x
       x <- round(x, 3)
-      y <- paste0("The correlation between ",var_1, " & ",var_2, " is ",x, " after filtering for ",filter_1,".")
+      y <- paste0("The correlation between ",var_1, " & ",var_2, " is ",x, " among ",filter_1,"s.")
       cat(y[2])
 }
 # https://rpubs.com/hadley/dplyr-programming 
