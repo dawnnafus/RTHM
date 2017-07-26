@@ -559,25 +559,32 @@ map = leaflet(data = df)
 map = addTiles(map)
 map %>%
   addCircleMarkers(map,
-    lng = well_coords[t.dc.pts,1], # longitude
-    lat = well_coords[t.dc.pts,2], # latitude
+    lng = well_coords[t.d.pts,1], # longitude
+    lat = well_coords[t.d.pts,2], # latitude
     radius = 4, # fixed radius size
     color = ~pal(Result),
     stroke = FALSE, 
     fillOpacity = 0.8,
-    popup = paste(as.character(ptsdf$Result), 
-                  "mg/L TDS", 
-                  by = " ")
+    popup = paste(ptsdf$Result, " mg/L TDS", "<br>",
+                  "Database: ", ptsdf$Database, "<br>",
+                  "Well ID: ", ptsdf$Well_ID, "<br>",
+                  "Latitude: ", ptsdf$Latitude, "<br>",
+                  "Longitude: ", ptsdf$Longitude)
   ) %>%
   
-  addLegend("topright", pal = pal,
+  addLegend("topright", pal = pal, # use custom palette
             values = ~Result,
             title = paste(d, t, sep = " "), # legend displays time frame and depth class as title
             labFormat = labelFormat(suffix = " mg/L"),
             opacity = 1
   ) %>%
   
-  addProviderTiles(providers$Esri.WorldTerrain) # override default map
+  addProviderTiles(providers$Esri.WorldTerrain # override default map with ESRI world terrain map
+
+  ) %>%
+  
+  setView(lng = lonCenter, lat = latCenter, zoom = 8) # iteratively changed zoom until it centered on the data
+
 ```
 
 ### Load shapefiles
