@@ -1,0 +1,8 @@
+name: Publish Document
+title:
+account: rpubs
+server: rpubs.com
+appId: https://api.rpubs.com/api/v1/document/294232/e4eb921c96ef4f98894bd92b2ca62b47
+bundleId: https://api.rpubs.com/api/v1/document/294232/e4eb921c96ef4f98894bd92b2ca62b47
+url: http://rpubs.com/lollon/294232
+when: 1501052364.47369
