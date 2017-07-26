@@ -1,5 +1,5 @@
 ---
-title: "Refinery Analysis"
+title: "Linking Health Outcomes to Refinery Emissions in the Bay Area"
 author: "Niklas Lollo"
 output: html_document
 ---
@@ -8,16 +8,14 @@ output: html_document
 knitr::opts_chunk$set(echo = TRUE)
 # List of R packages
 required_pkg <- c("tidyverse","maptools", "rgdal", "spatstat", "ggmap")
-pkgs_not_installed <- required_pkg[!sapply(required_pkg, function(p) require(p, character.only=T))]
-install.packages(pkgs_not_installed, dependencies=TRUE)
+#pkgs_not_installed <- required_pkg[!sapply(required_pkg, function(p) require(p, character.only=T))]
+#install.packages(pkgs_not_installed, dependencies=TRUE)
 
 # Load all libraries at once.
 lapply(required_pkg, library, character.only = TRUE) 
 ```
 
-## Setup
-### Create timespan of dataset
-```{r time dataset, message=F, warning=F}
+```{r time dataset, message=F, warning=F, echo=F}
 # Inputs here are date_begin and date_end
 timeframe <- function(date_begin = "2016-05-09 14:00", date_end = "2016-08-11 0:00"){
   exp_begin = as.POSIXct(date_begin, tz="GMT", format="%Y-%m-%d %H")
@@ -33,8 +31,7 @@ exp_begin = as.POSIXct(date_begin, tz="GMT", format="%Y-%m-%d %H")
 exp_end = as.POSIXct(date_end, tz="GMT", format="%Y-%m-%d %H")
 ```
 
-### Load Air Quality Data
-```{r load air quality data, warning=F, message=F}
+```{r load air quality data, warning=F, message=F, echo=F}
 # load air quality data
 feed_4902 <- read_csv("../refinery_data/airQuality_feed4902_data.csv")
 feed_4901 <- read_csv("../refinery_data/airQuality_feed4901_data.csv")
@@ -102,8 +99,7 @@ rm(hourly_4902, hourly_4902_methane)
 rm(feed_4901, feed_4902,feed_4902_methane)
 ```
 
-### Load Paco Data
-```{r load paco data, warning=F, message=F}
+```{r load paco data, warning=F, message=F, echo=F}
 # load paco data
 paco <- read_csv("../refinery_data/paco_all.csv")
 
@@ -165,8 +161,7 @@ paco_hourly <- paco %>%
 rm(paco)
 ```
 
-### Load Fitbit Data
-```{r load fitbit data, message=F, warning=F}
+```{r load fitbit data, message=F, warning=F, echo=F}
 # Load fitbit data
 fb_body <- read_csv("../refinery_data/fitbit_body_data.csv")
 fb_activities <- read_csv("../refinery_data/fitbit_activities_data.csv")
@@ -231,8 +226,7 @@ fb_intraday <- fb_intra %>%
 rm(fb_intra, fb_daily)
 ```
 
-### Individual Data
-```{r make individual data, message=F, warning=F}
+```{r make individual data, message=F, warning=F, echo=F}
 # Collect addresses
 m3_locale = as.numeric(
   geocode("460 3rd St, Richmond, CA 94801",
@@ -286,8 +280,7 @@ individual_data <- fb_data %>%
 rm(paco_hourly, fb_intraday)
 ```
 
-### Air Quality Data
-```{r create air quality dataset, message=F, warning=F}
+```{r create air quality dataset, message=F, warning=F, echo=F}
 # Air Quality data
 air_quality <- full_join(full_time, air_qual_4901, by = "day") %>%
   full_join(air_qual_4902, 
@@ -298,13 +291,12 @@ air_quality <- full_join(full_time, air_qual_4901, by = "day") %>%
   arrange(day)
 ```
 
-### Create Moving Window Average
-```{r moving window, message=F, warning=F}
+```{r moving window, message=F, warning=F, echo=F}
 # Set hours of interest
 hours = 5
 # Moving window average of sulfur dioxide
-df <- 
-  df %>% 
+air_quality <- 
+  air_quality %>% 
   group_by(id) %>% 
   arrange(day) %>%
   mutate(sulfur_window = zoo::rollapply(sulfur_dioxide, 
@@ -319,7 +311,8 @@ df <-
 
 ## Analysis
 ### Correlations
-```{r correlations, warning=F, message=F}
+To read a correlation, visit this page: https://www.mathsisfun.com/data/images/correlation-examples.svg
+```{r correlations, warning=F, message=F, echo=F}
 # No filter function
 correlation <- function(ind_data = individual_data, air_data = air_quality, 
                             var_1, var_2, var_time = day) {
@@ -338,10 +331,11 @@ correlation <- function(ind_data = individual_data, air_data = air_quality,
       ungroup %>%
       filter(!is.na(mean_var1) & !is.na(mean_var2)) %>%
       select(mean_var1, mean_var2) %>% 
-      boot::corr() %>% 
-      print()
+      boot::corr() -> x
+      x <- round(x, 3)
+      y <- paste0("The correlation between ",var_1, " & ",var_2, " is ",x,".")
+      cat(y[2])
 }
-
 # One filter function
 # Note: this function only works for "==" not < or >
 correlation_one_filter <- function(ind_data = individual_data, air_data = air_quality, 
@@ -363,8 +357,10 @@ correlation_one_filter <- function(ind_data = individual_data, air_data = air_qu
       ungroup %>%
       filter(!is.na(mean_var1) & !is.na(mean_var2)) %>%
       select(mean_var1, mean_var2) %>% 
-      boot::corr() %>% 
-      print()
+      boot::corr() -> x
+      x <- round(x, 3)
+      y <- paste0("The correlation between ",var_1, " & ",var_2, " is ",x, " among ",filter_1,"s.")
+      cat(y[2])
 }
 # https://rpubs.com/hadley/dplyr-programming 
 # See this for quosures and programming with dplyr
@@ -410,9 +406,19 @@ correlation_one_filter(ind_data = ind_data_hr,
 ```
 
 ### Correlation plots
-```{r plots, warning=F, message=F}
+```{r plots, warning=F, message=F, echo=F}
+# Create ggplot theme
+theme_fair_tech <- theme(
+  legend.position = "bottom",
+  panel.background = element_rect(fill = NA),
+  # panel.border = element_rect(fill = NA, color = "grey75"),
+  axis.ticks = element_line(color = "grey95", size = 0.3),
+  panel.grid.major = element_line(color = "grey95", size = 0.3),
+  panel.grid.minor = element_line(color = "grey95", size = 0.3),
+  legend.key = element_blank())
+
 # Plot of Blood Oxygen and Sulfur Dioxide
-ind_data %>%
+individual_data %>%
   #filter(age > 50 & sex == "male") %>%
   bind_rows(air_quality, .id = NULL) %>%
   select(blood_oxygen, sulfur_window, day) %>%
@@ -423,12 +429,18 @@ ind_data %>%
   ungroup %>%
   filter(!is.na(mean_bo) & !is.na(mean_sd)) %>%
   ggplot(aes(x= mean_sd, y= mean_bo)) + 
-  geom_point()+
-  geom_smooth(method = "lm", se=F)
+  geom_point() +
+  geom_smooth(method = "lm", se=F) +
+  theme_fair_tech + 
+  xlab("Sulfur Dioxide") +
+  ylab("Blood Oxygen") +
+  ggtitle("Correlation between Blood Oxygen and Sulfur Dioxide",
+    subtitle = "Fair Tech Collective"
+    )
 # Only 43 datapoints
 
 # Plot of heart rate and Sulfur Dioxide
-ind_data %>%
+individual_data %>%
   filter(heart_rate > 30 & heart_rate < 200) %>%
   #filter(age > 50 & sex == "male") %>%
   bind_rows(air_quality, .id = NULL) %>%
@@ -441,10 +453,16 @@ ind_data %>%
   filter(!is.na(mean_hr) & !is.na(mean_sd)) %>%
   ggplot(aes(x= mean_sd, y= mean_hr)) + 
   geom_point()+
-  geom_smooth(method = "lm", se=F)
+  geom_smooth(method = "lm", se=F) +
+  theme_fair_tech + 
+  xlab("Sulfur Dioxide") +
+  ylab("Heart Rate") +
+  ggtitle("Correlation between Heart Rate and Sulfur Dioxide",
+    subtitle = "Fair Tech Collective"
+    )
 
 # Plot of heart rate and methane
-ind_data %>%
+individual_data %>%
   filter(heart_rate > 30 & heart_rate < 200) %>%
   #filter(age > 50 & sex == "male") %>%
   bind_rows(air_quality, .id = NULL) %>%
@@ -457,7 +475,13 @@ ind_data %>%
   filter(!is.na(mean_hr) & !is.na(mean_m)) %>%
   ggplot(aes(x= mean_m, y= mean_hr)) + 
   geom_point()+
-  geom_smooth(method = "lm", se=F)
+  geom_smooth(method = "lm", se=F) + 
+  theme_fair_tech + 
+  xlab("Methane") +
+  ylab("Heart Rate") +
+  ggtitle("Correlation between Heart Rate and Methane",
+    subtitle = "Fair Tech Collective"
+    )
 ```
 
 ### Chi-Squared Tests
@@ -641,3 +665,4 @@ ggplot(waterDF, aes(x=long, y=lat,
 # https://stackoverflow.com/questions/15711013/spatial-autocorrelation-analysis-in-r?rq=1
 
 ```
+
