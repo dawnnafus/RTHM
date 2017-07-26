@@ -1,7 +1,9 @@
 ---
-title: "Linking Health Outcomes to Refinery Emissions in the Bay Area"
+title: "Linking Health Outcomes to Refinery Emissions"
 author: "Niklas Lollo"
-output: html_document
+output: 
+  html_document:
+    toc: true
 ---
 
 ```{r setup, include=FALSE, echo=F}
@@ -381,7 +383,10 @@ theme_fair_tech <- theme(
   axis.ticks = element_line(color = "grey95", size = 0.3),
   panel.grid.major = element_line(color = "grey95", size = 0.3),
   panel.grid.minor = element_line(color = "grey95", size = 0.3),
-  legend.key = element_blank())
+  legend.key = element_blank(),
+  plot.title = element_text(size=20, face="bold", color = "maroon", 
+    margin = margin(10, 0, 10, 0))
+  )
 
 # Plot of Blood Oxygen and Sulfur Dioxide
 ind_data_filtered %>%
@@ -397,10 +402,11 @@ ind_data_filtered %>%
   geom_point() +
   geom_smooth(method = "lm", se=F) +
   theme_fair_tech + 
-  xlab("Sulfur Dioxide") +
-  ylab("Blood Oxygen") +
-  ggtitle("Correlation between Blood Oxygen and Sulfur Dioxide",
-    subtitle = "Fair Tech Collective"
+  labs(x=expression(paste("Sulfur Dioxide ( ", degree ~ F, " )")), 
+       y=expression(paste("Blood Oxygen ( ", degree ~ F, " )"))) +
+  # Need to figure out units
+  ggtitle("Blood Oxygen and Sulfur Dioxide",
+    subtitle = "Correlation"
     )
 # Only 43 datapoints
 
@@ -418,10 +424,11 @@ ind_data_hr %>%
   geom_point()+
   geom_smooth(method = "lm", se=F) +
   theme_fair_tech + 
-  xlab("Sulfur Dioxide") +
-  ylab("Heart Rate") +
-  ggtitle("Correlation between Heart Rate and Sulfur Dioxide",
-    subtitle = "Fair Tech Collective"
+  labs(x=expression(paste("Sulfur Dioxide ( ", degree ~ F, " )")), 
+       y=expression(paste("Heart Rate ( ", BPM, " )"))) +
+  # Need to figure out units
+  ggtitle("Heart Rate and Sulfur Dioxide",
+    subtitle = "Correlation"
     )
 
 # Plot of heart rate and methane
@@ -438,9 +445,75 @@ ind_data_hr %>%
   geom_point()+
   geom_smooth(method = "lm", se=F) + 
   theme_fair_tech + 
-  xlab("Methane") +
-  ylab("Heart Rate") +
-  ggtitle("Correlation between Heart Rate and Methane",
-    subtitle = "Fair Tech Collective"
+  labs(x=expression(paste("Methane ( ", degree ~ F, " )")), 
+       y=expression(paste("Heart Rate ( ", BPM, " )"))) +
+  ggtitle("Heart Rate and Methane",
+    subtitle = "Correlation"
     )
+```
+
+### T-Tests
+These tests compare the difference between the population mean health outcome (e.g. heart rate) and the mean health outcome when the environmental input (e.g. methane) is above its median value. 
+
+```{r t test, message=F, warning=F, echo=F}
+# Will need to apply filters here as well
+# http://statistics.berkeley.edu/computing/r-t-tests
+
+# Heart rate and methane
+temp_hrm <- ind_data_hr %>%
+  #filter(age > 50 & sex == "male") %>%
+  bind_rows(air_quality, .id = NULL) %>%
+  select(heart_rate, methane, day) %>%
+  filter(!is.na(heart_rate) | !is.na(methane)) %>%  
+  group_by(day) %>%
+  summarize(mean_hr = mean(heart_rate, na.rm=T),
+            mean_m = mean(methane, na.rm=T)) %>%
+  ungroup %>% 
+  filter(!is.na(mean_hr) & !is.na(mean_m)) %>%
+  filter(mean_m > median(mean_m))
+
+mean_pop_hr <- mean(ind_data_hr$heart_rate, na.rm=T)
+mean_samp_hr <- mean(temp_hrm$mean_hr, na.rm=T)
+  
+cat("Heart Rate and Methane")
+t.test(x = temp_hrm$mean_hr, y = ind_data_hr$heart_rate)
+# t.test(temp_hrm$mean_hr, mu = mean_pop_hr)
+# Both work fine but above one corrects for difference variances
+# Here we see methane above its mean value is associated with a heart rate decrease of about 4 points 
+
+# Heart rate and sulfur dioxide
+temp_hrsd<- ind_data_hr %>%
+  #filter(age > 50 & sex == "male") %>%
+  bind_rows(air_quality, .id = NULL) %>%
+  select(heart_rate, sulfur_window, day) %>%
+  filter(!is.na(heart_rate) | !is.na(sulfur_window)) %>% 
+  group_by(day) %>%
+  summarize(mean_hr = mean(heart_rate, na.rm=T),
+            mean_sd = mean(sulfur_window, na.rm=T)) %>%
+  ungroup %>% 
+  filter(!is.na(mean_hr) & !is.na(mean_sd)) %>%
+  filter(mean_sd > mean(mean_sd))
+
+cat("Heart Rate and Sulfur Dioxide")
+t.test(x = temp_hrsd$mean_hr, y = ind_data_hr$heart_rate)
+#t.test(temp_hrsd$mean_hr, mu = mean_pop_hr)
+
+# Blood oxygen and sulfur dioxide
+temp_bosd<- individual_data %>%
+  #filter(age > 50 & sex == "male") %>%
+  bind_rows(air_quality, .id = NULL) %>%
+  select(blood_oxygen, sulfur_window, day) %>%
+  filter(!is.na(blood_oxygen) | !is.na(sulfur_window)) %>% 
+  group_by(day) %>%
+  summarize(mean_bo = mean(blood_oxygen, na.rm=T),
+            mean_sd = mean(sulfur_window, na.rm=T)) %>%
+  ungroup %>% 
+  filter(!is.na(mean_bo) & !is.na(mean_sd)) %>%
+  filter(mean_sd > mean(mean_sd))
+
+mean_bo<- mean(individual_data$blood_oxygen, na.rm=T)
+cat("Blood Oxygen and Sulfur Dioxide")
+t.test(x = temp_bosd$mean_bo, y = individual_data$blood_oxygen)
+t.test(temp_bosd$mean_bo, mu = mean_bo)
+# Error: not enough observations
 ```
