@@ -309,12 +309,20 @@ air_quality <-
   arrange(id, day)
 ```
 
+```{r filter your data, message=F, warning=F, echo=F}
+ind_data_filtered <- individual_data %>%
+  filter(sex == "male" & age > 50)
+
+filter_statement <- paste0("NOTE: This analysis looks at men over 50.")
+cat(filter_statement)
+```
+
 ## Analysis
 ### Correlations
 To read a correlation, visit this page: https://www.mathsisfun.com/data/images/correlation-examples.svg
 ```{r correlations, warning=F, message=F, echo=F}
 # No filter function
-correlation <- function(ind_data = individual_data, air_data = air_quality, 
+correlation <- function(ind_data = ind_data_filtered, air_data = air_quality, 
                             var_1, var_2, var_time = day) {
     var_1 <- enquo(var_1)
     var_2 <- enquo(var_2)
@@ -336,32 +344,7 @@ correlation <- function(ind_data = individual_data, air_data = air_quality,
       y <- paste0("The correlation between ",var_1, " & ",var_2, " is ",x,".")
       cat(y[2])
 }
-# One filter function
-# Note: this function only works for "==" not < or >
-correlation_one_filter <- function(ind_data = individual_data, air_data = air_quality, 
-                            var_1, var_2, var_time = day, filter_var_1, filter_1) {
-    var_1 <- enquo(var_1)
-    var_2 <- enquo(var_2)
-    var_time <- enquo(var_time)
-    filter_var_1 <- enquo(filter_var_1)
 
-    ind_data %>%
-      filter(UQ(filter_var_1) == filter_1) %>%
-      bind_rows(air_data, .id = NULL) %>%
-      mutate(id = as.factor(id)) %>%
-      select(!!var_1, !!var_2, !!var_time) %>%
-      filter(!is.na(!!var_1) | !is.na(!!var_2))%>%
-      group_by(!!var_time) %>%
-      summarize(mean_var1 = mean(!!var_1, na.rm=T),
-                mean_var2 = mean(!!var_2, na.rm=T)) %>% 
-      ungroup %>%
-      filter(!is.na(mean_var1) & !is.na(mean_var2)) %>%
-      select(mean_var1, mean_var2) %>% 
-      boot::corr() -> x
-      x <- round(x, 3)
-      y <- paste0("The correlation between ",var_1, " & ",var_2, " is ",x, " among ",filter_1,"s.")
-      cat(y[2])
-}
 # https://rpubs.com/hadley/dplyr-programming 
 # See this for quosures and programming with dplyr
 
@@ -370,39 +353,22 @@ correlation_one_filter <- function(ind_data = individual_data, air_data = air_qu
 # No filter
 correlation(var_1 = blood_oxygen,
             var_2 = sulfur_window)
-# One filter
-correlation_one_filter(var_1 = blood_oxygen,
-                       var_2 = sulfur_window,
-                       filter_var_1 = sex,
-                       filter_1 = "female")
 
 ## Heart Rate and Sulfur Dioxide
 # Make new individual data with heart rate filters
 # TO DO: We may want to just do this at the beginning of the analysis
-ind_data_hr <- individual_data %>%
+ind_data_hr <- ind_data_filtered %>%
   filter(heart_rate > 30 & heart_rate < 200)
 # No filter
 correlation(ind_data = ind_data_hr,
             var_1 = heart_rate,
             var_2 = sulfur_window)
-# One filter
-correlation_one_filter(ind_data = ind_data_hr,
-                       var_1 = heart_rate,
-                       var_2 = sulfur_window,
-                       filter_var_1 = sex,
-                       filter_1 = "female")
 
 ## Heart Rate and Methane
 # No filter
 correlation(ind_data = ind_data_hr,
             var_1 = heart_rate,
             var_2 = methane)
-# One filter
-correlation_one_filter(ind_data = ind_data_hr,
-                       var_1 = heart_rate,
-                       var_2 = methane,
-                       filter_var_1 = sex,
-                       filter_1 = "female")
 ```
 
 ### Correlation plots
@@ -418,8 +384,7 @@ theme_fair_tech <- theme(
   legend.key = element_blank())
 
 # Plot of Blood Oxygen and Sulfur Dioxide
-individual_data %>%
-  #filter(age > 50 & sex == "male") %>%
+ind_data_filtered %>%
   bind_rows(air_quality, .id = NULL) %>%
   select(blood_oxygen, sulfur_window, day) %>%
   filter(!is.na(blood_oxygen) | !is.na(sulfur_window)) %>% 
@@ -440,9 +405,7 @@ individual_data %>%
 # Only 43 datapoints
 
 # Plot of heart rate and Sulfur Dioxide
-individual_data %>%
-  filter(heart_rate > 30 & heart_rate < 200) %>%
-  #filter(age > 50 & sex == "male") %>%
+ind_data_hr %>%
   bind_rows(air_quality, .id = NULL) %>%
   select(heart_rate, sulfur_window, day) %>%
   filter(!is.na(heart_rate) | !is.na(sulfur_window)) %>% 
@@ -462,9 +425,7 @@ individual_data %>%
     )
 
 # Plot of heart rate and methane
-individual_data %>%
-  filter(heart_rate > 30 & heart_rate < 200) %>%
-  #filter(age > 50 & sex == "male") %>%
+ind_data_hr %>%
   bind_rows(air_quality, .id = NULL) %>%
   select(heart_rate, methane, day) %>%
   filter(!is.na(heart_rate) | !is.na(methane)) %>% 
