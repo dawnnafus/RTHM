@@ -315,12 +315,11 @@ air_quality <-
 ```
 
 ```{r TO DO filter your data, message=F, warning=F, echo=F}
-# Select filters
 ind_data_filtered <- individual_data %>%
-  filter(heart_rate > 30 & heart_rate < 200) %>%
-  filter(sex == "male" & age > 50)
+  filter(heart_rate > 30 & heart_rate < 200) %>% # put bounds on heart rate
+  filter(sex == "male" & age > 50) # Select demographic filters
 
-# Make the dataframe
+# Make the final dataframe (do not change)
 final_df <- ind_data_filtered %>%
   bind_rows(air_quality, .id = NULL) %>%
   mutate(id = as.factor(id))
