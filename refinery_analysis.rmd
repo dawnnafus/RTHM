@@ -1,5 +1,5 @@
 ---
-title: "Linking Health Outcomes to Refinery Emissions"
+title: "Linking Health Indicators to Refinery Emissions"
 author: "Niklas Lollo"
 output: 
   html_document:
@@ -296,7 +296,7 @@ air_quality <- full_join(full_time, air_qual_4901, by = "day") %>%
 
 ```{r moving window, message=F, warning=F, echo=F}
 # Set hours of interest
-hours = 5
+hours = 8
 # Moving window average of sulfur dioxide
 air_quality <- 
   air_quality %>% 
@@ -314,110 +314,37 @@ air_quality <-
   arrange(id, day)
 ```
 
-```{r filter your data, message=F, warning=F, echo=F}
+```{r TO DO filter your data, message=F, warning=F, echo=F}
 ind_data_filtered <- individual_data %>%
-  filter(sex == "male" & age > 50)
+  filter(heart_rate > 30 & heart_rate < 200 | is.na(heart_rate)) %>% # put bounds on heart rate
+  filter(sex == "male" & age > 50) # Select demographic filters
 
+# Make the final dataframe (do not change)
+final_df <- ind_data_filtered %>%
+  bind_rows(air_quality, .id = NULL) %>%
+  mutate(id = as.factor(id))
+
+# Make sure to write your note!
 filter_statement <- paste0("NOTE: This analysis looks at men over 50.")
 cat(filter_statement)
 ```
 # Notes on Data Sources
-Methane and sulfur dioxide readings collected daily by [Fenceline.org](fenceline.org)
+Methane and sulfur dioxide readings collected in real-time by [Fenceline.org](fenceline.org)
 
 Heart rate collected with Fitbit health monitors
 
 Blood Oxygen levels recorded with a pulse oximeter^[[Pulse Oximetry wiki](https://en.wikipedia.org/wiki/Pulse_oximetry)]
 
 # Correlations
-To read a correlation, visit this page: https://www.mathsisfun.com/data/images/correlation-examples.svg
-```{r correlations, warning=F, message=F, echo=F}
-# Correlation function call
-correlation_text <- function(ind_data = ind_data_filtered, air_data = air_quality, 
-                            var_1, var_2, var_time = day) {
-    var_1 <- enquo(var_1)
-    var_2 <- enquo(var_2)
-    var_time <- enquo(var_time)
 
-    ind_data %>%
-      bind_rows(air_data, .id = NULL) %>%
-      mutate(id = as.factor(id)) %>%
-      select(!!var_1, !!var_2, !!var_time) %>%
-      filter(!is.na(!!var_1) | !is.na(!!var_2))%>%
-      group_by(!!var_time) %>%
-      summarize(mean_var1 = mean(!!var_1, na.rm=T),
-                mean_var2 = mean(!!var_2, na.rm=T)) %>% 
-      ungroup %>%
-      filter(!is.na(mean_var1) & !is.na(mean_var2)) %>%
-      select(mean_var1, mean_var2) %>% 
-      boot::corr() %>%
-      round(3) -> x
-      y <- paste0("The correlation between ",var_1, " & ",var_2, " is ",x,".")
-      cat(y[2])
-}
+## Plots^[For help on interpreting a correlation plot, visit this [page](https://www.mathsisfun.com/data/images/correlation-examples.svg)]
 
-correlation_num <- function(ind_data = ind_data_filtered, air_data = air_quality, 
-                            var_1, var_2, var_time = day) {
-    var_1 <- enquo(var_1)
-    var_2 <- enquo(var_2)
-    var_time <- enquo(var_time)
+t-tests for Statistical Significance^[Welch two-sample t-test]
 
-    ind_data %>%
-      bind_rows(air_data, .id = NULL) %>%
-      mutate(id = as.factor(id)) %>%
-      select(!!var_1, !!var_2, !!var_time) %>%
-      filter(!is.na(!!var_1) | !is.na(!!var_2))%>%
-      group_by(!!var_time) %>%
-      summarize(mean_var1 = mean(!!var_1, na.rm=T),
-                mean_var2 = mean(!!var_2, na.rm=T)) %>% 
-      ungroup %>%
-      filter(!is.na(mean_var1) & !is.na(mean_var2)) %>%
-      select(mean_var1, mean_var2) %>% 
-      boot::corr() %>%
-      round(3)
-}
-
-# https://rpubs.com/hadley/dplyr-programming 
-# See this for quosures and programming with dplyr
-
-### Correlations ###
-## Blood Oxygen and Sulfur Dioxide
-# No filter
-correlation_text(
-  var_1 = blood_oxygen,
-  var_2 = sulfur_dioxide_exposure_window)
-corr_bosd <- correlation_num(
-  var_1 = blood_oxygen,
-  var_2 = sulfur_dioxide_exposure_window)
-## Heart Rate and Sulfur Dioxide
-# Make new individual data with heart rate filters
-# TO DO: We may want to just do this at the beginning of the analysis
-ind_data_hr <- ind_data_filtered %>%
-  filter(heart_rate > 30 & heart_rate < 200)
-# No filter
-correlation_text(
-  ind_data = ind_data_hr,
-  var_1 = heart_rate,
-  var_2 = sulfur_dioxide_exposure_window)
-corr_hrsd <- correlation_num(
-  ind_data = ind_data_hr,
-  var_1 = heart_rate,
-  var_2 = sulfur_dioxide_exposure_window)
-
-## Heart Rate and Methane
-# No filter
-correlation_text(
-  ind_data = ind_data_hr,
-  var_1 = heart_rate,
-  var_2 = methane)
-corr_hrm <- correlation_num(
-  ind_data = ind_data_hr,
-  var_1 = heart_rate,
-  var_2 = methane)
-```
-
-## Correlation plots
+These tests compare the difference between the population mean health outcome (e.g. heart rate) and the mean health outcome when the environmental input (e.g. methane) is above its median value.
 ```{r plots, warning=F, message=F, echo=F}
 # http://zevross.com/blog/2014/08/04/beautiful-plotting-in-r-a-ggplot2-cheatsheet-3/#add-text-annotation-in-the-top-right-top-left-etc.-annotation_custom-and-friends
+
 # Create ggplot theme
 theme_fair_tech <- theme(
   legend.position = "bottom",
@@ -431,140 +358,79 @@ theme_fair_tech <- theme(
     margin = margin(10, 0, 10, 0))
   )
 
-# Plot of Blood Oxygen and Sulfur Dioxide
-ind_data_filtered %>%
-  bind_rows(air_quality, .id = NULL) %>%
-  select(blood_oxygen, sulfur_dioxide_exposure_window, day) %>%
-  filter(!is.na(blood_oxygen) | !is.na(sulfur_dioxide_exposure_window)) %>% 
-  group_by(day) %>%
-  summarize(mean_bo = mean(blood_oxygen, na.rm=T),
-            mean_sd = mean(sulfur_dioxide_exposure_window, na.rm=T)) %>% 
-  ungroup %>%
-  filter(!is.na(mean_bo) & !is.na(mean_sd)) %>%
-  ggplot(aes(x= mean_sd, y= mean_bo)) + 
-  geom_point() +
-  geom_smooth(method = "lm", se=F) +
-  theme_fair_tech + 
-  labs(x=expression(paste("Sulfur Dioxide (", ppb,")")), 
-       y=expression(paste("Blood Oxygen (", `%`, ")"))) +
-  # Need to figure out units
-  ggtitle("Blood Oxygen and Sulfur Dioxide",
-    subtitle = "Correlation") + 
-  geom_text(x = 8, y = 95, color ="red",
-            label = paste0("r = ", corr_bosd))
-# Only 43 datapoints
-
-# Heart rate and Sulfur Dioxide
-ind_data_hr %>%
-  bind_rows(air_quality, .id = NULL) %>%
-  select(heart_rate, sulfur_dioxide_exposure_window, day) %>%
-  filter(!is.na(heart_rate) | !is.na(sulfur_dioxide_exposure_window)) %>% 
-  group_by(day) %>%
-  summarize(mean_hr = mean(heart_rate, na.rm=T),
-            mean_sd = mean(sulfur_dioxide_exposure_window, na.rm=T)) %>% 
-  ungroup %>%
-  filter(!is.na(mean_hr) & !is.na(mean_sd)) %>%
-  ggplot(aes(x= mean_sd, y= mean_hr)) + 
-  geom_point()+
-  geom_smooth(method = "lm", se=F) +
-  theme_fair_tech + 
-  labs(x=expression(paste("Sulfur Dioxide (", ppb, ")")), 
-       y=expression(paste("Heart Rate (", BPM, ")"))) +
-  # Need to figure out units
-  ggtitle("Heart Rate and Sulfur Dioxide",
-    subtitle = "Correlation") + 
-  geom_text(x = 20, y = 95, color ="red", 
-            label = paste0("r = ", corr_hrsd))
-
-# Plot of heart rate and methane
-ind_data_hr %>%
-  bind_rows(air_quality, .id = NULL) %>%
-  select(heart_rate, methane, day) %>%
-  filter(!is.na(heart_rate) | !is.na(methane)) %>% 
-  group_by(day) %>%
-  summarize(mean_hr = mean(heart_rate, na.rm=T),
-            mean_m = mean(methane, na.rm=T)) %>% 
-  ungroup %>%
-  filter(!is.na(mean_hr) & !is.na(mean_m)) %>%
-  ggplot(aes(x= mean_m, y= mean_hr)) + 
-  geom_point()+
-  geom_smooth(method = "lm", se=F) + 
-  theme_fair_tech + 
-  labs(x=expression(paste("Methane (", ppb, ")")), 
-       y=expression(paste("Heart Rate (", BPM, ")"))) +
-  ggtitle("Heart Rate and Methane",
-    subtitle = "Correlation"
-    ) + 
-  geom_text(x = 7500, y = 100, color ="red",
-            label = paste0("r = ", corr_hrm))
-```
-
-## T-Tests for Statistical Significance^[Welch two-sample t-test]
-These tests compare the difference between the population mean health outcome (e.g. heart rate) and the mean health outcome when the environmental input (e.g. methane) is above its median value.
-
-```{r t test, message=F, warning=F, echo=F}
-# http://statistics.berkeley.edu/computing/r-t-tests
-
-# Heart rate and methane
-temp_hrm <- ind_data_hr %>%
-  bind_rows(air_quality, .id = NULL) %>%
-  select(heart_rate, methane, day) %>%
-  filter(!is.na(heart_rate) | !is.na(methane)) %>%  
-  group_by(day) %>%
-  summarize(mean_hr = mean(heart_rate, na.rm=T),
-            mean_m = mean(methane, na.rm=T)) %>%
-  ungroup %>% 
-  filter(!is.na(mean_hr) & !is.na(mean_m)) %>%
-  filter(mean_m > median(mean_m))
-
-mean_pop_hr <- mean(ind_data_hr$heart_rate, na.rm=T)
-mean_samp_hr <- mean(temp_hrm$mean_hr, na.rm=T)
+my_plot <- function(df = final_df,
+                    time_var = day,
+                    health_var,
+                    health_var_name,
+                    health_var_units,
+                    pollutant_var,
+                    pollutant_var_name, 
+                    pollutant_var_units){
   
-t_hrm <- t.test(x = temp_hrm$mean_hr, y = ind_data_hr$heart_rate)
+  health_var <- enquo(health_var)
+  pollutant_var <- enquo(pollutant_var)
+  time_var <- enquo(time_var)
 
-# t.test(temp_hrm$mean_hr, mu = mean_pop_hr)
-# Both work fine but above one corrects for difference variances
+  # Summary dataframe
+  df %>%
+    select(!!health_var, !!pollutant_var, !!time_var) %>%
+    filter(!is.na(!!health_var) | !is.na(!!pollutant_var))%>%
+    group_by(!!time_var) %>%
+    summarize(mean_health_var = mean(!!health_var, na.rm=T),
+              mean_pollutant_var = mean(!!pollutant_var, na.rm=T)) %>% 
+    ungroup %>%
+    filter(!is.na(mean_health_var) & !is.na(mean_pollutant_var)) ->
+    df_new
+  
+  # Correlation
+  df_new %>%
+    select(mean_health_var, mean_pollutant_var) %>% 
+    boot::corr() %>%
+    round(3) -> correlation
+  
+  # t-test
+  df %>% 
+    transmute(health = !!health_var) -> health
+  df_new %>%
+    filter(mean_pollutant_var > median(mean_pollutant_var)) %>%
+    select(mean_health_var) -> sample
+  # Perhaps should compare to air_quality standards instead of median
+  t_test <- t.test(x = sample[[1]], y = health[[1]])
 
-# Heart rate and sulfur dioxide
-temp_hrsd<- ind_data_hr %>%
-  bind_rows(air_quality, .id = NULL) %>%
-  select(heart_rate, sulfur_dioxide_exposure_window, day) %>%
-  filter(!is.na(heart_rate) | !is.na(sulfur_dioxide_exposure_window)) %>% 
-  group_by(day) %>%
-  summarize(mean_hr = mean(heart_rate, na.rm=T),
-            mean_sd = mean(sulfur_dioxide_exposure_window, na.rm=T)) %>%
-  ungroup %>% 
-  filter(!is.na(mean_hr) & !is.na(mean_sd)) %>%
-  filter(mean_sd > mean(mean_sd))
+  # Plot
+  df_new %>%
+    ggplot(aes(x= mean_health_var, y= mean_pollutant_var)) + 
+      geom_point() +
+      geom_smooth(method = "lm", se=F) +
+      theme_fair_tech + 
+      labs(x=paste0(health_var_name," (",health_var_units,")"), 
+           y=paste0(pollutant_var_name," (",pollutant_var_units,")")) +
+      ggtitle(paste0(health_var_name, " & ", pollutant_var_name),
+              subtitle=paste0("r = ", correlation,
+                              ", p-value = ",round(t_test$p.value,4)))
+}
 
-t_hrsd <- t.test(x = temp_hrsd$mean_hr, y = ind_data_hr$heart_rate)
-#t.test(temp_hrsd$mean_hr, mu = mean_pop_hr)
+# Blood Oxygen and Sulfur Dioxide
+my_plot(health_var = blood_oxygen,
+        health_var_name = "Blood Oxygen",
+        health_var_units = "%",
+        pollutant_var = sulfur_dioxide_exposure_window,
+        pollutant_var_name = "Sulfur Dioxide",
+        pollutant_var_units = "ppb")
 
-# Blood oxygen and sulfur dioxide
-temp_bosd<- ind_data_filtered %>%
-  bind_rows(air_quality, .id = NULL) %>%
-  select(blood_oxygen, sulfur_dioxide_exposure_window, day) %>%
-  filter(!is.na(blood_oxygen) | !is.na(sulfur_dioxide_exposure_window)) %>% 
-  group_by(day) %>%
-  summarize(mean_bo = mean(blood_oxygen, na.rm=T),
-            mean_sd = mean(sulfur_dioxide_exposure_window, na.rm=T)) %>%
-  ungroup %>% 
-  filter(!is.na(mean_bo) & !is.na(mean_sd)) %>%
-  filter(mean_sd > mean(mean_sd))
+# Heart Rate and Sulfur Dioxide
+my_plot(health_var = heart_rate,
+        health_var_name = "Heart Rate",
+        health_var_units = "bpm",
+        pollutant_var = sulfur_dioxide_exposure_window,
+        pollutant_var_name = "Sulfur Dioxide",
+        pollutant_var_units = "ppb")
 
-mean_bo<- mean(ind_data_filtered$blood_oxygen, na.rm=T)
-t_bosd <- t.test(x = temp_bosd$mean_bo, y = ind_data_filtered$blood_oxygen)
-#t.test(temp_bosd$mean_bo, mu = mean_bo)
-
-p_values <- data.frame("blood oxygen" = c(t_bosd$p.value,NA),
-                       "heart rate" = c(t_hrsd$p.value,t_hrm$p.value))
-rownames(p_values) <- c("sulfur dioxide", "methane")
-colnames(p_values) <- c("blood oxygen", "heart rate")
-
-# http://galahad.well.ox.ac.uk/repro/#footnotes
-knitr::kable(p_values,
-             digits = 4,
-             caption = "p-values from the Welch two-sample t-tests",
-             align = "c",
-             knitr.table.format = 'html')
+# Heart Rate and Methane
+my_plot(health_var = heart_rate,
+        health_var_name = "Heart Rate",
+        health_var_units = "bpm",
+        pollutant_var = methane,
+        pollutant_var_name = "Methane",
+        pollutant_var_units = "ppb")
 ```
