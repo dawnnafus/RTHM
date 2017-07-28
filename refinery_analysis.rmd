@@ -231,38 +231,11 @@ rm(fb_intra, fb_daily)
 ```
 
 ```{r make individual data, message=F, warning=F, echo=F}
-# Collect addresses
-m3_locale = as.numeric(
-  geocode("460 3rd St, Richmond, CA 94801",
-          source="google"))
-m5_locale = as.numeric(
-  geocode("2515 Downer Ave, Richmond, CA 94804",
-          source="google"))
-m7_locale = as.numeric(
-  geocode("2640 Esmond Ave, Richmond, CA 94804",
-          source="google"))
-m9_locale = as.numeric(
-  geocode("1612 Mission Ave, San Pablo, CA 94806",
-          source="google"))
-m10_locale = as.numeric(
-  geocode("1832 4th St, Richmond, CA 94801",
-          source="google"))
-m11_locale = as.numeric(
-  geocode("2836 18th St, San Pablo, CA 94806",
-          source="google"))
-m16_locale = as.numeric(
-  geocode("5733 Oakmont Dr, Richmond, CA 94806",
-          source="google"))
-
 # Make demographics dataframe
 demographics <- data_frame(
   id =  c("m3","m5","m7","m9","m10","m11","m16"),
   age = c(21,34,45,33,56,67,51),
-  sex = as.factor(c("male","female","male","female","female","male","female")),
-  home_lat = c(m3_locale[2], m5_locale[2], m7_locale[2], 
-          m9_locale[2], m10_locale[2], m11_locale[2], m16_locale[2]),
-  home_long = c(m3_locale[1], m5_locale[1], m7_locale[1], 
-           m9_locale[1], m10_locale[1], m11_locale[1], m16_locale[1]))
+  sex = as.factor(c("male","female","male","female","female","male","female")))
 
 # Merge with fb_intraday
 fb_data <- left_join(fb_intraday, demographics, by = "id") %>%
@@ -392,6 +365,7 @@ my_plot <- function(df = final_df,
   # t-test
   df %>% 
     transmute(health = !!health_var) -> health
+  
   df_new %>%
     filter(mean_pollutant_var > median(mean_pollutant_var)) %>%
     select(mean_health_var) -> sample
@@ -436,45 +410,60 @@ my_plot(health_var = heart_rate,
         pollutant_var_units = "ppb")
 ```
 
-```{r, warning=F, message=F, echo=F}
-library(shiny)
+```{r shiny}
+#final_df %>%
+#  group_by(day) %>%
+#  summarize(
+#    methane = mean(methane, na.rm=T),
+#    heart_rate = mean(heart_rate, na.rm=T)
+#  ) %>%
+#  ungroup %>%
+#  filter(!is.na(methane) & !is.na(heart_rate)) %>%
+#  ggplot() + 
+#    geom_point(aes(x = methane, y = heart_rate))
 
-function(input, output, session) {
-
-  # Combine the selected variables into a new data frame
-  selectedData <- reactive({
-    iris[, c(input$xcol, input$ycol)]
+library(rsconnect)
+server <- function(input, output) {
+  
+  output$healthSelect <- renderUI({
+    selectInput("health_var", "Health Indicator", 
+                choices = c("heart_rate", "blood_oxygen"), 
+                selected = "heart_rate")
   })
-
-  clusters <- reactive({
-    kmeans(selectedData(), input$clusters)
+  
+  output$pollutantSelect <- renderUI({
+    selectInput("pollutant_var", "Pollutant", 
+                choices = c("sulfur_dioxide_exposure_window", "methane"),
+                selected = "methane")
   })
-
+  
   output$plot1 <- renderPlot({
-    palette(c("#E41A1C", "#377EB8", "#4DAF4A", "#984EA3",
-      "#FF7F00", "#FFFF33", "#A65628", "#F781BF", "#999999"))
-
-    par(mar = c(5.1, 4.1, 0, 1))
-    plot(selectedData())
+    final_df %>%
+      group_by(day) %>%
+      summarize(
+        "pollutant" = mean(UQ(input$pollutant_var), na.rm=T),
+        "health" = mean(UQ(input$health_var), na.rm=T)
+      ) %>%
+      ungroup -> new_df
+    ggplot(new_df) +
+      geom_point(aes_string(x = "pollutant", y = "health"))
   })
-
+  
 }
 
-textInput(inputId = "health_var_name",
-          label = "What is the name of the health indicator?",
-          placeholder = "Heart Rate")
-numericInput("n",
- "How many cars?", 5)
+ui <- fluidPage(
+  sidebarLayout(
+    sidebarPanel(
+      h3('Indicators'),
+      uiOutput('healthSelect'),
+      uiOutput("pollutantSelect")
+    ),
+    mainPanel(
+      plotOutput('plot1'),
+      uiOutput('table')
+    )
+  )
+)
 
-?shiny
-my_plot(health_var = heart_rate,
-        health_var_name = "Heart Rate",
-        health_var_units = "bpm",
-        pollutant_var = methane,
-        pollutant_var_name = "Methane",
-        pollutant_var_units = "ppb")
-
-renderTable({
- head(cars, input$n)
-})
+shinyApp(ui = ui, server = server)
 ```
