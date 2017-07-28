@@ -384,7 +384,6 @@ correlation_num <- function(df = final_df,
 
 ### Correlations ###
 ## Blood Oxygen and Sulfur Dioxide
-# No filter
 correlation_text(
   var_1 = blood_oxygen,
   var_2 = sulfur_dioxide_exposure_window)
@@ -392,8 +391,6 @@ corr_bosd <- correlation_num(
   var_1 = blood_oxygen,
   var_2 = sulfur_dioxide_exposure_window)
 ## Heart Rate and Sulfur Dioxide
-# Make new individual data with heart rate filters
-# TO DO: We may want to just do this at the beginning of the analysis
 correlation_text(
   var_1 = heart_rate,
   var_2 = sulfur_dioxide_exposure_window)
@@ -402,7 +399,6 @@ corr_hrsd <- correlation_num(
   var_2 = sulfur_dioxide_exposure_window)
 
 ## Heart Rate and Methane
-# No filter
 correlation_text(
   var_1 = heart_rate,
   var_2 = methane)
@@ -414,6 +410,7 @@ corr_hrm <- correlation_num(
 ## Correlation plots^[For help on interpreting a correlation plot, visit this [page](https://www.mathsisfun.com/data/images/correlation-examples.svg)]
 ```{r plots, warning=F, message=F, echo=F}
 # http://zevross.com/blog/2014/08/04/beautiful-plotting-in-r-a-ggplot2-cheatsheet-3/#add-text-annotation-in-the-top-right-top-left-etc.-annotation_custom-and-friends
+
 # Create ggplot theme
 theme_fair_tech <- theme(
   legend.position = "bottom",
@@ -427,7 +424,7 @@ theme_fair_tech <- theme(
     margin = margin(10, 0, 10, 0))
   )
 
-# Plot of Blood Oxygen and Sulfur Dioxide
+# Blood Oxygen and Sulfur Dioxide
 final_df %>%
   select(blood_oxygen, sulfur_dioxide_exposure_window, day) %>%
   filter(!is.na(blood_oxygen) | !is.na(sulfur_dioxide_exposure_window)) %>% 
@@ -442,12 +439,10 @@ final_df %>%
   theme_fair_tech + 
   labs(x=expression(paste("Sulfur Dioxide (", ppb,")")), 
        y=expression(paste("Blood Oxygen (", `%`, ")"))) +
-  # Need to figure out units
   ggtitle("Blood Oxygen and Sulfur Dioxide",
     subtitle = "Correlation") + 
   geom_text(x = 8, y = 95, color ="red",
             label = paste0("r = ", corr_bosd))
-# Only 43 datapoints
 
 # Heart rate and Sulfur Dioxide
 final_df %>%
@@ -464,7 +459,6 @@ final_df %>%
   theme_fair_tech + 
   labs(x=expression(paste("Sulfur Dioxide (", ppb, ")")), 
        y=expression(paste("Heart Rate (", BPM, ")"))) +
-  # Need to figure out units
   ggtitle("Heart Rate and Sulfur Dioxide",
     subtitle = "Correlation") + 
   geom_text(x = 20, y = 95, color ="red", 
@@ -486,8 +480,7 @@ final_df %>%
   labs(x=expression(paste("Methane (", ppb, ")")), 
        y=expression(paste("Heart Rate (", BPM, ")"))) +
   ggtitle("Heart Rate and Methane",
-    subtitle = "Correlation"
-    ) + 
+    subtitle = "Correlation") + 
   geom_text(x = 7500, y = 100, color ="red",
             label = paste0("r = ", corr_hrm))
 ```
@@ -508,14 +501,8 @@ temp_hrm <- final_df %>%
   ungroup %>% 
   filter(!is.na(mean_hr) & !is.na(mean_m)) %>%
   filter(mean_m > median(mean_m))
-
-#mean_pop_hr <- mean(final_df$heart_rate, na.rm=T)
-#mean_samp_hr <- mean(temp_hrm$mean_hr, na.rm=T)
   
 t_hrm <- t.test(x = temp_hrm$mean_hr, y = final_df$heart_rate)
-
-# t.test(temp_hrm$mean_hr, mu = mean_pop_hr)
-# Both work fine but above one corrects for difference variances
 
 # Heart rate and sulfur dioxide
 temp_hrsd<- final_df %>%
@@ -529,7 +516,6 @@ temp_hrsd<- final_df %>%
   filter(mean_sd > mean(mean_sd))
 
 t_hrsd <- t.test(x = temp_hrsd$mean_hr, y = final_df$heart_rate)
-#t.test(temp_hrsd$mean_hr, mu = mean_pop_hr)
 
 # Blood oxygen and sulfur dioxide
 temp_bosd<- final_df %>%
@@ -542,9 +528,7 @@ temp_bosd<- final_df %>%
   filter(!is.na(mean_bo) & !is.na(mean_sd)) %>%
   filter(mean_sd > mean(mean_sd))
 
-#mean_bo<- mean(final_df$blood_oxygen, na.rm=T)
 t_bosd <- t.test(x = temp_bosd$mean_bo, y = final_df$blood_oxygen)
-#t.test(temp_bosd$mean_bo, mu = mean_bo)
 
 p_values <- data.frame("blood oxygen" = c(t_bosd$p.value,NA),
                        "heart rate" = c(t_hrsd$p.value,t_hrm$p.value))
