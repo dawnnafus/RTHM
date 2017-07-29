@@ -310,6 +310,24 @@ summary_df <- total_df %>%
 filter_statement <- paste0("NOTE: This analysis looks at men over 50.")
 cat(filter_statement)
 ```
+
+```{r plot theme, warning=F, message=F, echo=F}
+# http://zevross.com/blog/2014/08/04/beautiful-plotting-in-r-a-ggplot2-cheatsheet-3/#add-text-annotation-in-the-top-right-top-left-etc.-annotation_custom-and-friends
+
+# Create ggplot theme
+theme_fair_tech <- theme(
+  legend.position = "bottom",
+  panel.background = element_rect(fill = NA),
+  # panel.border = element_rect(fill = NA, color = "grey75"),
+  axis.ticks = element_line(color = "grey95", size = 0.3),
+  panel.grid.major = element_line(color = "grey95", size = 0.3),
+  panel.grid.minor = element_line(color = "grey95", size = 0.3),
+  legend.key = element_blank(),
+  plot.title = element_text(size=20, face="bold", color = "maroon", 
+    margin = margin(10, 0, 10, 0))
+  )
+```
+
 # Notes on Data Sources
 Methane and sulfur dioxide readings collected in real-time by [Fenceline.org](fenceline.org)
 
@@ -325,21 +343,6 @@ t-tests for Statistical Significance^[Welch two-sample t-test]
 
 These tests compare the difference between the population mean health outcome (e.g. heart rate) and the mean health outcome when the environmental input (e.g. methane) is above its median value.
 ```{r plots, warning=F, message=F, echo=F}
-# http://zevross.com/blog/2014/08/04/beautiful-plotting-in-r-a-ggplot2-cheatsheet-3/#add-text-annotation-in-the-top-right-top-left-etc.-annotation_custom-and-friends
-
-# Create ggplot theme
-theme_fair_tech <- theme(
-  legend.position = "bottom",
-  panel.background = element_rect(fill = NA),
-  # panel.border = element_rect(fill = NA, color = "grey75"),
-  axis.ticks = element_line(color = "grey95", size = 0.3),
-  panel.grid.major = element_line(color = "grey95", size = 0.3),
-  panel.grid.minor = element_line(color = "grey95", size = 0.3),
-  legend.key = element_blank(),
-  plot.title = element_text(size=20, face="bold", color = "maroon", 
-    margin = margin(10, 0, 10, 0))
-  )
-
 my_plot <- function(df = summary_df,
                     health_var,
                     health_var_name,
@@ -347,7 +350,6 @@ my_plot <- function(df = summary_df,
                     pollutant_var,
                     pollutant_var_name, 
                     pollutant_var_units){
-  
   health_var <- enquo(health_var)
   pollutant_var <- enquo(pollutant_var)
 
@@ -368,7 +370,6 @@ my_plot <- function(df = summary_df,
     # Not filtering for above meadian anymore
     select(UQ(health_var)) -> sample
 
-  
   # Perhaps should compare to air_quality standards instead of median
   t_test <- t.test(x = sample[[1]], y = health[[1]])
 

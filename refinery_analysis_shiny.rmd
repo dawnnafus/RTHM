@@ -366,28 +366,24 @@ server <- function(input, output) {
                 selected = "methane")
   })
   
-  
   #output$view <- renderTable({ datadata() })
   
   output$plot1 <- renderPlot({
     new_data <- datadata()
     
-    
-    #new_data %>%
-    #  filter(!is.na(vars(!!as.name(input$health_var))) & 
-    #           !is.na(vars(!!as.name(input$pollutant)))) %>%
-    #  select(matches(input$health_var), matches(input$pollutant_var)) %>% 
-    #  boot::corr() %>%
-    #  round(3) -> correlation
-    
+    new_data %>%
+      select(matches(input$health_var), matches(input$pollutant_var)) %>% 
+      boot::corr() %>%
+      round(3) -> correlation
+
     ggplot(new_data) +
       geom_point(aes_string(x = input$pollutant_var, y = input$health_var))+
       scale_x_continuous() + 
       scale_y_continuous() + 
       theme_fair_tech + 
       geom_smooth(aes_string(x= input$pollutant_var, y= input$health_var), 
-                  method = "lm", se=F) #+ 
-      #ggtitle(paste0("r = ",correlation))
+                  method = "lm", se=F) + 
+      ggtitle(paste0("r = ",correlation))
   })
   
 }
