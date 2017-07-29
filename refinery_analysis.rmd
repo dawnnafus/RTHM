@@ -230,38 +230,11 @@ rm(fb_intra, fb_daily)
 ```
 
 ```{r make individual data, message=F, warning=F, echo=F}
-# Collect addresses
-m3_locale = as.numeric(
-  geocode("460 3rd St, Richmond, CA 94801",
-          source="google"))
-m5_locale = as.numeric(
-  geocode("2515 Downer Ave, Richmond, CA 94804",
-          source="google"))
-m7_locale = as.numeric(
-  geocode("2640 Esmond Ave, Richmond, CA 94804",
-          source="google"))
-m9_locale = as.numeric(
-  geocode("1612 Mission Ave, San Pablo, CA 94806",
-          source="google"))
-m10_locale = as.numeric(
-  geocode("1832 4th St, Richmond, CA 94801",
-          source="google"))
-m11_locale = as.numeric(
-  geocode("2836 18th St, San Pablo, CA 94806",
-          source="google"))
-m16_locale = as.numeric(
-  geocode("5733 Oakmont Dr, Richmond, CA 94806",
-          source="google"))
-
 # Make demographics dataframe
 demographics <- data_frame(
   id =  c("m3","m5","m7","m9","m10","m11","m16"),
   age = c(21,34,45,33,56,67,51),
-  sex = as.factor(c("male","female","male","female","female","male","female")),
-  home_lat = c(m3_locale[2], m5_locale[2], m7_locale[2], 
-          m9_locale[2], m10_locale[2], m11_locale[2], m16_locale[2]),
-  home_long = c(m3_locale[1], m5_locale[1], m7_locale[1], 
-           m9_locale[1], m10_locale[1], m11_locale[1], m16_locale[1]))
+  sex = as.factor(c("male","female","male","female","female","male","female")))
 
 # Merge with fb_intraday
 fb_data <- left_join(fb_intraday, demographics, by = "id") %>%
@@ -277,7 +250,8 @@ paco_data <- full_join(paco_hourly, demographics, by = "id") %>%
 
 # Individual data
 individual_data <- fb_data %>%
-  bind_rows(paco_data, .id = NULL)
+  bind_rows(paco_data, .id = NULL) %>%
+  filter((heart_rate > 30 & heart_rate < 200) | is.na(heart_rate))
 
 # Remove unnecessary dataframes
 rm(paco_hourly, fb_intraday)
@@ -315,14 +289,22 @@ air_quality <-
 ```
 
 ```{r TO DO filter your data, message=F, warning=F, echo=F}
-ind_data_filtered <- individual_data %>%
-  filter(heart_rate > 30 & heart_rate < 200 | is.na(heart_rate)) %>% # put bounds on heart rate
-  filter(sex == "male" & age > 50) # Select demographic filters
-
-# Make the final dataframe (do not change)
-final_df <- ind_data_filtered %>%
+total_df <- individual_data %>%
+  filter(sex == "male" & age > 50) %>%
   bind_rows(air_quality, .id = NULL) %>%
-  mutate(id = as.factor(id))
+  mutate(id = as.factor(id)) # Select demographic filters
+
+summary_df <- total_df %>%
+  group_by(day) %>%
+  summarize(
+    # Pollutants
+    methane = mean(methane, na.rm=T),
+    sulfur_dioxide = mean(sulfur_dioxide_exposure_window, na.rm=T),
+    # Health indicators
+    heart_rate = mean(heart_rate, na.rm=T),
+    blood_oxygen = mean(blood_oxygen, na.rm=T)
+    ) %>%
+  ungroup
 
 # Make sure to write your note!
 filter_statement <- paste0("NOTE: This analysis looks at men over 50.")
@@ -358,8 +340,7 @@ theme_fair_tech <- theme(
     margin = margin(10, 0, 10, 0))
   )
 
-my_plot <- function(df = final_df,
-                    time_var = day,
+my_plot <- function(df = summary_df,
                     health_var,
                     health_var_name,
                     health_var_units,
@@ -369,39 +350,42 @@ my_plot <- function(df = final_df,
   
   health_var <- enquo(health_var)
   pollutant_var <- enquo(pollutant_var)
-  time_var <- enquo(time_var)
 
-  # Summary dataframe
-  df %>%
-    select(!!health_var, !!pollutant_var, !!time_var) %>%
-    filter(!is.na(!!health_var) | !is.na(!!pollutant_var))%>%
-    group_by(!!time_var) %>%
-    summarize(mean_health_var = mean(!!health_var, na.rm=T),
-              mean_pollutant_var = mean(!!pollutant_var, na.rm=T)) %>% 
-    ungroup %>%
-    filter(!is.na(mean_health_var) & !is.na(mean_pollutant_var)) ->
-    df_new
-  
   # Correlation
-  df_new %>%
-    select(mean_health_var, mean_pollutant_var) %>% 
+  df %>%
+    filter(!is.na(!!health_var) & !is.na(!!pollutant_var)) %>%
+    select(UQ(health_var), UQ(pollutant_var)) %>% 
     boot::corr() %>%
     round(3) -> correlation
-  
+
   # t-test
   df %>% 
+    filter(!is.na(!!health_var)) %>%
     transmute(health = !!health_var) -> health
-  df_new %>%
-    filter(mean_pollutant_var > median(mean_pollutant_var)) %>%
-    select(mean_health_var) -> sample
+  
+  df %>%
+    filter(!is.na(!!health_var) & !is.na(!!pollutant_var)) %>%
+    # Not filtering for above meadian anymore
+    select(UQ(health_var)) -> sample
+
+  
   # Perhaps should compare to air_quality standards instead of median
   t_test <- t.test(x = sample[[1]], y = health[[1]])
 
-  # Plot
+  df %>%
+    filter(!is.na(!!health_var) & !is.na(!!pollutant_var)) %>%
+    transmute(
+      health = !!health_var,
+      pollutant = !!pollutant_var) -> df_new
+
+    # Plot
   df_new %>%
-    ggplot(aes(x= mean_health_var, y= mean_pollutant_var)) + 
-      geom_point() +
-      geom_smooth(method = "lm", se=F) +
+    ggplot() + 
+      geom_point(aes(x= health, y= pollutant)) +
+      geom_smooth(aes(x= health, y= pollutant), 
+                  method = "lm", se=F) +
+      scale_x_continuous() +
+      scale_y_continuous() +
       theme_fair_tech + 
       labs(x=paste0(health_var_name," (",health_var_units,")"), 
            y=paste0(pollutant_var_name," (",pollutant_var_units,")")) +
@@ -414,7 +398,7 @@ my_plot <- function(df = final_df,
 my_plot(health_var = blood_oxygen,
         health_var_name = "Blood Oxygen",
         health_var_units = "%",
-        pollutant_var = sulfur_dioxide_exposure_window,
+        pollutant_var = sulfur_dioxide,
         pollutant_var_name = "Sulfur Dioxide",
         pollutant_var_units = "ppb")
 
@@ -422,7 +406,7 @@ my_plot(health_var = blood_oxygen,
 my_plot(health_var = heart_rate,
         health_var_name = "Heart Rate",
         health_var_units = "bpm",
-        pollutant_var = sulfur_dioxide_exposure_window,
+        pollutant_var = sulfur_dioxide,
         pollutant_var_name = "Sulfur Dioxide",
         pollutant_var_units = "ppb")
 

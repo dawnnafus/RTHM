@@ -1,8 +1,25 @@
-required_pkg <- c("tidyverse","maptools", "rgdal", "spatstat", "ggmap", "shiny")
-lapply(required_pkg, library, character.only = TRUE) 
-library(rsconnect)
+---
+title: "Linking Health Indicators to Refinery Emissions"
+author: "Niklas Lollo"
+output: 
+  html_document:
+    toc: true
+runtime: shiny
+---
 
-# Timeframe
+```{r setup, include=FALSE, echo=F}
+# http://rmarkdown.rstudio.com/index.html
+knitr::opts_chunk$set(echo = TRUE)
+# List of R packages
+required_pkg <- c("tidyverse","maptools", "rgdal", "spatstat", "ggmap")
+#pkgs_not_installed <- required_pkg[!sapply(required_pkg, function(p) require(p, character.only=T))]
+#install.packages(pkgs_not_installed, dependencies=TRUE)
+
+# Load all libraries at once.
+lapply(required_pkg, library, character.only = TRUE) 
+```
+
+```{r time dataset, message=F, warning=F, echo=F}
 # Inputs here are date_begin and date_end
 timeframe <- function(date_begin = "2016-05-09 14:00", date_end = "2016-08-11 0:00"){
   exp_begin = as.POSIXct(date_begin, tz="GMT", format="%Y-%m-%d %H")
@@ -16,12 +33,13 @@ date_begin = "2016-05-09 14:00"
 date_end = "2016-08-11 0:00"
 exp_begin = as.POSIXct(date_begin, tz="GMT", format="%Y-%m-%d %H")
 exp_end = as.POSIXct(date_end, tz="GMT", format="%Y-%m-%d %H")
+```
 
-# Air quality
+```{r load air quality data, warning=F, message=F, echo=F}
 # load air quality data
-feed_4902 <- read_csv("~/Documents/coding/refinery_data/airQuality_feed4902_data.csv")
-feed_4901 <- read_csv("~/Documents/coding/refinery_data/airQuality_feed4901_data.csv")
-feed_4902_methane <- read_csv("~/Documents/coding/refinery_data/airQuality_N20_methane_4902_data.csv")
+feed_4902 <- read_csv("../refinery_data/airQuality_feed4902_data.csv")
+feed_4901 <- read_csv("../refinery_data/airQuality_feed4901_data.csv")
+feed_4902_methane <- read_csv("../refinery_data/airQuality_N20_methane_4902_data.csv")
 
 # Make hourly averages
 ## Set zero's to NA to not "mess up" average
@@ -45,7 +63,7 @@ hourly_4902 <- feed_4902 %>%
 # Do the same for the other feed4902 dataframe
 feed_4902_methane[feed_4902_methane == 0] <- NA
 hourly_4902_methane <- feed_4902_methane %>%
-  group_by(
+    group_by(
     # Creates new variables
     day = as.POSIXct(cut(t, breaks='hour'))) %>%
   summarise(
@@ -67,7 +85,7 @@ air_qual_4901 <- feed_4901 %>%
   group_by(
     # Creates new variables
     day = as.POSIXct(cut(t, breaks='hour'))) %>%
-  # Averages
+    # Averages
   summarise(
     sulfur_dioxide = mean(sulfurDioxide, na.rm=T),
     carbon_monoxide = mean(carbonMonoxide, na.rm=T),
@@ -83,11 +101,11 @@ air_qual_4901 <- feed_4901 %>%
 rm(hourly_4902, hourly_4902_methane)
 # Remove original dataframes
 rm(feed_4901, feed_4902,feed_4902_methane)
+```
 
-# PACO DATA
-
+```{r load paco data, warning=F, message=F, echo=F}
 # load paco data
-paco <- read_csv("~/Documents/coding/refinery_data/paco_all.csv")
+paco <- read_csv("../refinery_data/paco_all.csv")
 
 # Creating new dataframe
 paco <- paco %>%
@@ -119,8 +137,8 @@ paco <- paco %>%
             scheduledTime, timeZone)) %>%
   # Select persons of interest 
   filter(id == "m3" | id == "m5" | id == "m7" |
-           id == "m9" | id == "m10" | id == "m11" |
-           id == "m16") %>%
+      id == "m9" | id == "m10" | id == "m11" |
+      id == "m16") %>%
   arrange(t)
 
 # Remove incorrect values
@@ -129,44 +147,46 @@ paco$SPO2[paco$SPO2 == 0 | paco$SPO2 > 100 | paco$SPO2 < 80] <- NA
 paco_hourly <- paco %>%
   # Select the person, day and hour of interest
   group_by(id,
-           # Creates new variables
-           day = as.POSIXct(cut(t, breaks='hour'))) %>%
+    # Creates new variables
+    day = as.POSIXct(cut(t, breaks='hour'))) %>%
   # Average
   summarise(blood_oxygen = mean(SPO2, na.rm=T)) %>%
   filter(is.na(blood_oxygen) == F) %>% 
   complete(expand(nesting(id), day = seq(exp_begin, exp_end, by = 3600)),  
            #completing all levels of id:day
-           fill = list(blood_oxygen = NA)) %>%
+              fill = list(blood_oxygen = NA)) %>%
   # Select persons of interest 
   filter(id == "m3" | id == "m5" | id == "m7" |
-           id == "m9" | id == "m10" | id == "m11" |
-           id == "m16") %>%
+      id == "m9" | id == "m10" | id == "m11" |
+      id == "m16") %>%
   # Arrange the columns by person
   arrange(id)
 
 rm(paco)
+```
 
+```{r load fitbit data, message=F, warning=F, echo=F}
 # Load fitbit data
-fb_body <- read_csv("~/Documents/coding/refinery_data/fitbit_body_data.csv")
-fb_activities <- read_csv("~/Documents/coding/refinery_data/fitbit_activities_data.csv")
-fb_sleep <- read_csv("~/Documents/coding/refinery_data/fitbit_sleep_data.csv")
+fb_body <- read_csv("../refinery_data/fitbit_body_data.csv")
+fb_activities <- read_csv("../refinery_data/fitbit_activities_data.csv")
+fb_sleep <- read_csv("../refinery_data/fitbit_sleep_data.csv")
 
 # Merge daily fitbit data
 fb_daily <- inner_join(fb_body, fb_activities, fb_sleep, by = "t")
 rm(fb_body, fb_activities, fb_sleep)
 
 # Load intraday activity
-fb_intraday_m3 <- read_csv("~/Documents/coding/refinery_data/fitbit_intradayactivities_m3.csv") %>%
+fb_intraday_m3 <- read_csv("../refinery_data/fitbit_intradayactivities_m3.csv") %>%
   mutate(id = "m3")
-fb_intraday_m5 <- read_csv("~/Documents/coding/refinery_data/fitbit_intradayactivities_m5.csv")%>%
+fb_intraday_m5 <- read_csv("../refinery_data/fitbit_intradayactivities_m5.csv")%>%
   mutate(id = "m5")
-fb_intraday_m7 <- read_csv("~/Documents/coding/refinery_data/fitbit_intradayactivities_m7.csv")%>%
+fb_intraday_m7 <- read_csv("../refinery_data/fitbit_intradayactivities_m7.csv")%>%
   mutate(id = "m7")
-fb_intraday_m9 <- read_csv("~/Documents/coding/refinery_data/fitbit_intradayactivities_m9.csv")%>%
+fb_intraday_m9 <- read_csv("../refinery_data/fitbit_intradayactivities_m9.csv")%>%
   mutate(id = "m9")
-fb_intraday_m11 <- read_csv("~/Documents/coding/refinery_data/fitbit_intradayactivities_m11.csv")%>%
+fb_intraday_m11 <- read_csv("../refinery_data/fitbit_intradayactivities_m11.csv")%>%
   mutate(id = "m11")
-fb_intraday_m16 <- read_csv("~/Documents/coding/refinery_data/fitbit_intradayactivities_m16.csv")%>%
+fb_intraday_m16 <- read_csv("../refinery_data/fitbit_intradayactivities_m16.csv")%>%
   mutate(id = "m16")
 
 # Combine dataframes
@@ -184,8 +204,8 @@ rm(fb_intraday_m3, fb_intraday_m5, fb_intraday_m7,
 # Make hourly data
 fb_intraday <- fb_intra %>% 
   group_by(id,
-           # Creates new variables
-           day = as.POSIXct(cut(t, breaks='hour'))) %>%
+    # Creates new variables
+    day = as.POSIXct(cut(t, breaks='hour'))) %>%
   summarise(
     # Averages
     calories = sum(calories, na.rm=T),
@@ -194,22 +214,24 @@ fb_intraday <- fb_intra %>%
     heart_rate = mean(heart, na.rm=T),
     floors = sum(floors, na.rm=T),
     elevation = sum(elevation, na.rm=T)) %>%
-  complete(expand(nesting(id), day = seq(exp_begin, exp_end, by = 3600)),  
-           #completing all levels of id:day
-           fill = list(calories = NA,distance = NA,
-                       steps = NA, heart_rate = NA,
-                       floors = NA, elevation = NA)) %>%
+    complete(expand(nesting(id), day = seq(exp_begin, exp_end, by = 3600)),  
+         #completing all levels of id:day
+              fill = list(calories = NA,distance = NA,
+                          steps = NA, heart_rate = NA,
+                          floors = NA, elevation = NA)) %>%
   # Select persons of interest 
   filter(id == "m3" | id == "m5" | id == "m7" |
-           id == "m9" | id == "m10" | id == "m11" |
-           id == "m16") %>%
+      id == "m9" | id == "m10" | id == "m11" |
+      id == "m16") %>%
   # Arrange the columns by day
   arrange(id, day)
 
 # Remove original dataframes
 rm(fb_intra, fb_daily)
+```
 
-# Individual data
+```{r make individual data, message=F, warning=F, echo=F}
+# Make demographics dataframe
 demographics <- data_frame(
   id =  c("m3","m5","m7","m9","m10","m11","m16"),
   age = c(21,34,45,33,56,67,51),
@@ -225,15 +247,18 @@ paco_data <- full_join(paco_hourly, demographics, by = "id") %>%
   ungroup %>%
   mutate(
     id = as.factor(id)
-  )
+    )
 
 # Individual data
 individual_data <- fb_data %>%
-  bind_rows(paco_data, .id = NULL)
+  bind_rows(paco_data, .id = NULL) %>%
+  filter((heart_rate > 30 & heart_rate < 200) | is.na(heart_rate))
 
 # Remove unnecessary dataframes
 rm(paco_hourly, fb_intraday)
+```
 
+```{r create air quality dataset, message=F, warning=F, echo=F}
 # Air Quality data
 air_quality <- full_join(full_time, air_qual_4901, by = "day") %>%
   full_join(air_qual_4902, 
@@ -242,8 +267,9 @@ air_quality <- full_join(full_time, air_qual_4901, by = "day") %>%
   select(day, id, everything()) %>%
   mutate(id = as.factor(id)) %>%
   arrange(day)
+```
 
-
+```{r moving window, message=F, warning=F, echo=F}
 # Set hours of interest
 hours = 8
 # Moving window average of sulfur dioxide
@@ -261,43 +287,110 @@ air_quality <-
                      align = "right")) %>%
   ungroup %>%
   arrange(id, day)
+```
 
-# Filter data
-ind_data_filtered <- individual_data %>%
-  filter(heart_rate > 30 & heart_rate < 200 | is.na(heart_rate)) %>% # put bounds on heart rate
-  filter(sex == "male" & age > 50) # Select demographic filters
+```{r plot theme, warning=F, message=F, echo=F}
+# http://zevross.com/blog/2014/08/04/beautiful-plotting-in-r-a-ggplot2-cheatsheet-3/#add-text-annotation-in-the-top-right-top-left-etc.-annotation_custom-and-friends
 
-# Make the final dataframe (do not change)
-final_df <- ind_data_filtered %>%
-  bind_rows(air_quality, .id = NULL) %>%
-  mutate(id = as.factor(id))
+# Create ggplot theme
+theme_fair_tech <- theme(
+  legend.position = "bottom",
+  panel.background = element_rect(fill = NA),
+  # panel.border = element_rect(fill = NA, color = "grey75"),
+  axis.ticks = element_line(color = "grey95", size = 0.3),
+  panel.grid.major = element_line(color = "grey95", size = 0.3),
+  panel.grid.minor = element_line(color = "grey95", size = 0.3),
+  legend.key = element_blank(),
+  plot.title = element_text(size=20, face="bold", color = "maroon", 
+    margin = margin(10, 0, 10, 0))
+  )
+```
 
-function(input, output) {
-      
-      output$healthSelect <- renderUI({
-        selectInput("health_var", "Health Indicator", 
-                    choices = c("heart_rate", "blood_oxygen"), 
-                    selected = "heart_rate")
-      })
+```{r shiny, echo=F, message=F, warning=F}
+library(rsconnect)
+ui <- fluidPage(
+  sidebarLayout(
+    sidebarPanel(
+      h3('Selections'),
+      sliderInput(inputId = "age_range",
+              label = "Age Range", min= 0 , max = 100,
+              value = c(20,80),
+              step = 5),
+      checkboxGroupInput(
+        inputId = "gender",
+        label= "Gender",
+        choices = c("male" = "male","female"= "female"),
+        selected = c("male", "female")),
+      uiOutput('genderSelect'),
+      uiOutput('healthSelect'),
+      uiOutput("pollutantSelect")
+    ),
+    mainPanel(
+      #uiOutput('view'),
+      plotOutput('plot1')
+    )
+  )
+)
 
-      output$pollutantSelect <- renderUI({
-        selectInput("pollutant_var", "Pollutant", 
-                    choices = c("sulfur_dioxide_exposure_window", "methane"),
-                    selected = pollutantVariables[1])
-      })
-      
-      output$plot <- renderPlot({
-        final_df %>%
-          select(input$health_var, input$pollutant_var, day) %>%
-          filter(!is.na(input$health_var) | !is.na(input$pollutant_var))%>%
-          group_by(day) %>%
-          summarize(mean_health_var = mean(input$health_var, na.rm=T),
-                    mean_pollutant_var = mean(input$pollutant_var, na.rm=T)) %>% 
-          ungroup %>%
-          filter(!is.na(mean_health_var) & !is.na(mean_pollutant_var)) %>%
-          ggplot(aes(x= mean_health_var, y= mean_pollutant_var)) + 
-          geom_point() +
-          geom_smooth(method = "lm", se=F)
-      })
+server <- function(input, output) {
+  
+  datadata <- reactive({
+    
+    individual_data %>%
+      filter(age > input$age_range[1] & age <input$age_range[2]) %>%
+      filter(sex %in% input$gender) %>%
+        bind_rows(air_quality, .id = NULL) %>%
+        mutate(id = as.factor(id))%>%
+        group_by(day) %>%
+        summarize(
+        # Pollutants
+          methane = mean(methane, na.rm=T),
+          sulfur_dioxide = mean(sulfur_dioxide_exposure_window, na.rm=T),
+          # Health indicators
+          heart_rate = mean(heart_rate, na.rm=T),
+          blood_oxygen = mean(blood_oxygen, na.rm=T)
+        ) %>%
+        ungroup
+  })
 
+  output$healthSelect <- renderUI({
+    selectInput("health_var", "Health Indicator", 
+                choices = c("heart_rate", "blood_oxygen"), 
+                selected = "heart_rate")
+  })
+  
+  output$pollutantSelect <- renderUI({
+    selectInput("pollutant_var", "Pollutant", 
+                choices = c("sulfur_dioxide",
+                            "methane"),
+                selected = "methane")
+  })
+  
+  
+  #output$view <- renderTable({ datadata() })
+  
+  output$plot1 <- renderPlot({
+    new_data <- datadata()
+    
+    
+    #new_data %>%
+    #  filter(!is.na(vars(!!as.name(input$health_var))) & 
+    #           !is.na(vars(!!as.name(input$pollutant)))) %>%
+    #  select(matches(input$health_var), matches(input$pollutant_var)) %>% 
+    #  boot::corr() %>%
+    #  round(3) -> correlation
+    
+    ggplot(new_data) +
+      geom_point(aes_string(x = input$pollutant_var, y = input$health_var))+
+      scale_x_continuous() + 
+      scale_y_continuous() + 
+      theme_fair_tech + 
+      geom_smooth(aes_string(x= input$pollutant_var, y= input$health_var), 
+                  method = "lm", se=F) #+ 
+      #ggtitle(paste0("r = ",correlation))
+  })
+  
 }
+
+shinyApp(ui = ui, server = server)
+```
