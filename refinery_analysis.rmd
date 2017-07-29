@@ -424,7 +424,7 @@ my_plot(health_var = heart_rate,
 
 library(rsconnect)
 server <- function(input, output) {
-  
+
   output$healthSelect <- renderUI({
     selectInput("health_var", "Health Indicator", 
                 choices = c("heart_rate", "blood_oxygen"), 
@@ -433,20 +433,37 @@ server <- function(input, output) {
   
   output$pollutantSelect <- renderUI({
     selectInput("pollutant_var", "Pollutant", 
-                choices = c("sulfur_dioxide_exposure_window", "methane"),
+                choices = c("sulfur_dioxide_exposure_window",
+                            "methane"),
                 selected = "methane")
   })
   
+  
+  health <- reactive({
+    
+      final_df %>%
+        group_by(day) %>%
+        summarize(health = mean(UQ(input$health_var), na.rm=T))
+  })
+  
+  
+  pollutant <- reactive({
+      
+      final_df %>%
+        group_by(day) %>%
+        summarize(pollutant = mean(vars(!!input$pollutant_var), na.rm=T))
+  })
+  
+  output$type <- renderPrint({ 
+    typeof(pollutant()$pollutant)
+    pollutant()$pollutant
+    })
+  
+  output$view <- renderTable({ pollutant() })
+  
   output$plot1 <- renderPlot({
-    final_df %>%
-      group_by(day) %>%
-      summarize(
-        "pollutant" = mean(UQ(input$pollutant_var), na.rm=T),
-        "health" = mean(UQ(input$health_var), na.rm=T)
-      ) %>%
-      ungroup -> new_df
-    ggplot(new_df) +
-      geom_point(aes_string(x = "pollutant", y = "health"))
+    ggplot() +
+      geom_point(aes_string(x = pollutant()$pollutant, y = health()$health))
   })
   
 }
@@ -460,7 +477,7 @@ ui <- fluidPage(
     ),
     mainPanel(
       plotOutput('plot1'),
-      uiOutput('table')
+      uiOutput('type')
     )
   )
 )
