@@ -230,10 +230,37 @@ rm(fb_intra, fb_daily)
 ```
 
 ```{r make individual data, message=F, warning=F, echo=F}
+# Collect addresses
+m3_locale = as.numeric(
+  geocode("460 3rd St, Richmond, CA 94801",
+          source="google"))
+m5_locale = as.numeric(
+  geocode("2515 Downer Ave, Richmond, CA 94804",
+          source="google"))
+m7_locale = as.numeric(
+  geocode("2640 Esmond Ave, Richmond, CA 94804",
+          source="google"))
+m9_locale = as.numeric(
+  geocode("1612 Mission Ave, San Pablo, CA 94806",
+          source="google"))
+m10_locale = as.numeric(
+  geocode("1832 4th St, Richmond, CA 94801",
+          source="google"))
+m11_locale = as.numeric(
+  geocode("2836 18th St, San Pablo, CA 94806",
+          source="google"))
+m16_locale = as.numeric(
+  geocode("5733 Oakmont Dr, Richmond, CA 94806",
+          source="google"))
+
 # Make demographics dataframe
 demographics <- data_frame(
   id =  c("m3","m5","m7","m9","m10","m11","m16"),
   age = c(21,34,45,33,56,67,51),
+  home_lat = c(m3_locale[2], m5_locale[2], m7_locale[2], 
+          m9_locale[2], m10_locale[2], m11_locale[2], m16_locale[2]),
+  home_long = c(m3_locale[1], m5_locale[1], m7_locale[1], 
+           m9_locale[1], m10_locale[1], m11_locale[1], m16_locale[1]),
   sex = as.factor(c("male","female","male","female","female","male","female")))
 
 # Merge with fb_intraday
@@ -290,9 +317,23 @@ air_quality <-
 
 ```{r TO DO filter your data, message=F, warning=F, echo=F}
 total_df <- individual_data %>%
-  filter(sex == "male" & age > 50) %>%
-  bind_rows(air_quality, .id = NULL) %>%
-  mutate(id = as.factor(id)) # Select demographic filters
+  #filter(sex == "male" & age > 50) %>% # Select demographic filters
+  bind_rows(air_quality, .id = NULL) %>% # add air_quality data
+  mutate(id = as.factor(id))
+
+binding_df <- total_df %>%
+  select(-c(methane, sulfur_dioxide))
+
+spatial_df <- total_df %>%
+  group_by(day) %>%
+  summarize(
+    methane = mean(methane, na.rm=T),
+    sulfur_dioxide = mean(sulfur_dioxide_exposure_window, na.rm=T)
+  ) %>%
+  ungroup %>%
+  right_join(binding_df, by = "day") %>%
+  filter(!is.na(id)) %>%
+  arrange(day)
 
 summary_df <- total_df %>%
   group_by(day) %>%
@@ -419,51 +460,34 @@ my_plot(health_var = heart_rate,
         pollutant_var_name = "Methane",
         pollutant_var_units = "ppb")
 ```
+
 ## Spatial Analysis
 ### Leaflet
-```{r}
+```{r leaflet, warning=F, message=F, echo=F}
 library(leaflet)
 # https://rstudio.github.io/leaflet/
 
-# Make dataframe
-df <- individual_data %>%
-  #filter() %>%
-  bind_rows(air_quality, .id = NULL) %>%
-  mutate(id = as.factor(id))
-
-# generate map assocaited with time frame t and depth d
-
-map = leaflet(data = df) 
-
-map = addTiles(map)
-map %>%
-  addCircleMarkers(map,
-    lng = well_coords[t.d.pts,1], # longitude
-    lat = well_coords[t.d.pts,2], # latitude
-    radius = 4, # fixed radius size
-    color = ~pal(Result),
-    stroke = FALSE, 
-    fillOpacity = 0.8,
-    popup = paste(ptsdf$Result, " mg/L TDS", "<br>",
-                  "Database: ", ptsdf$Database, "<br>",
-                  "Well ID: ", ptsdf$Well_ID, "<br>",
-                  "Latitude: ", ptsdf$Latitude, "<br>",
-                  "Longitude: ", ptsdf$Longitude)
-  ) %>%
-  
-  addLegend("topright", pal = pal, # use custom palette
-            values = ~Result,
-            title = paste(d, t, sep = " "), # legend displays time frame and depth class as title
-            labFormat = labelFormat(suffix = " mg/L"),
-            opacity = 1
-  ) %>%
-  
-  addProviderTiles(providers$Esri.WorldTerrain # override default map with ESRI world terrain map
-
-  ) %>%
-  
-  setView(lng = lonCenter, lat = latCenter, zoom = 8) # iteratively changed zoom until it centered on the data
-
+# generate map
+map = leaflet(data = spatial_df) %>% 
+  addTiles()
+map %>% addCircleMarkers(
+  lng = ~home_long,
+  lat = ~home_lat,
+  radius = 4,
+  stroke = FALSE,
+  color = "black",
+  fillOpacity = 0.8,
+  popup = paste0("ID: ", spatial_df$id, "<br>",
+                  "Age: ", spatial_df$age, "<br>",
+                  "Sex: ", spatial_df$sex)) 
+# Excess from Rich
+#  addProviderTiles(providers$Esri.WorldTerrain)
+#  addLegend("topright", pal = pal, # use custom palette
+#            values = ~Result,
+#            title = paste(d, t, sep = " "),
+#            labFormat = labelFormat(suffix = " mg/L"),
+#            opacity = 1
+# setView(lng = lonCenter, lat = latCenter, zoom = 8)
 ```
 
 ### Load shapefiles
