@@ -10,7 +10,7 @@ output:
 # http://rmarkdown.rstudio.com/index.html
 knitr::opts_chunk$set(echo = TRUE)
 # List of R packages
-required_pkg <- c("tidyverse","maptools", "rgdal", "spatstat", "ggmap", "geosphere", "leaflet")
+required_pkg <- c("tidyverse","maptools", "rgdal", "spatstat", "ggmap", "geosphere", "leaflet", "spdep", "sp")
 #pkgs_not_installed <- required_pkg[!sapply(required_pkg, function(p) require(p, character.only=T))]
 #install.packages(pkgs_not_installed, dependencies=TRUE)
 
@@ -100,6 +100,37 @@ air_qual_4901 <- feed_4901 %>%
 rm(hourly_4902, hourly_4902_methane)
 # Remove original dataframes
 rm(feed_4901, feed_4902,feed_4902_methane)
+```
+
+```{r create air quality dataset, message=F, warning=F, echo=F}
+# Air Quality data
+air_quality <- full_join(full_time, air_qual_4901, by = "day") %>%
+  full_join(air_qual_4902, 
+            by = c("day", "id", "sulfur_dioxide",
+                   "carbon_monoxide", "ozone")) %>%
+  select(day, id, everything()) %>%
+  mutate(id = as.factor(id)) %>%
+  arrange(day)
+
+rm(air_qual_4901, air_qual_4902)
+```
+
+```{r moving window, message=F, warning=F, echo=F}
+# Moving window average of sulfur dioxide
+air_quality <- 
+  air_quality %>% 
+  group_by(id) %>% 
+  arrange(day) %>%
+  mutate(
+    sulfur_dioxide_exposure_window = 
+      zoo::rollapply(sulfur_dioxide,
+                     width = 8, #TO DO: Select number of hours to include
+                     FUN = mean, #function is mean
+                     na.rm = T, #avoids NA
+                     partial = T, #skips unnecessary datapoints
+                     align = "right")) %>%
+  ungroup %>%
+  arrange(id, day)
 ```
 
 ```{r load paco data, warning=F, message=F, echo=F}
@@ -223,7 +254,7 @@ fb_intraday <- fb_intra %>%
       id == "m9" | id == "m10" | id == "m11" |
       id == "m16") %>%
   # Arrange the columns by day
-  arrange(id, day)
+  arrange(id, day) 
 
 # Remove original dataframes
 rm(fb_intra, fb_daily)
@@ -257,15 +288,6 @@ m16_locale = as.numeric(
   geocode("5733 Oakmont Dr, Richmond, CA 94806",
           source="google"))
 
-# Distance to refinery
-m3_distance_meters <- distm (m3_locale, refinery, fun = distHaversine)
-m5_distance_meters <- distm (m5_locale, refinery, fun = distHaversine)
-m7_distance_meters <- distm (m7_locale, refinery, fun = distHaversine)
-m9_distance_meters <- distm (m9_locale, refinery, fun = distHaversine)
-m10_distance_meters <- distm (m10_locale, refinery, fun = distHaversine)
-m11_distance_meters <- distm (m11_locale, refinery, fun = distHaversine)
-m16_distance_meters <- distm (m16_locale, refinery, fun = distHaversine)
-
 # Make demographics dataframe
 demographics <- data_frame(
   id =  c("m3","m5","m7","m9","m10","m11","m16"),
@@ -274,11 +296,17 @@ demographics <- data_frame(
           m9_locale[2], m10_locale[2], m11_locale[2], m16_locale[2]),
   home_long = c(m3_locale[1], m5_locale[1], m7_locale[1], 
            m9_locale[1], m10_locale[1], m11_locale[1], m16_locale[1]),
-  home_dist_to_refinery = c(m3_distance_meters, m5_distance_meters,
-                            m7_distance_meters, m9_distance_meters,
-                            m10_distance_meters, m11_distance_meters,
-                            m16_distance_meters),
-  sex = as.factor(c("male","female","male","female","female","male","female")))
+  sex = as.factor(c("male","female","male","female","female","male","female"))) %>%
+  mutate(
+    home_dist_to_refinery = distm(cbind(home_long, home_lat), refinery, 
+                                  fun= distHaversine))
+
+# LongLat randomizer
+set.seed(0)
+long_possible = (-12243009:-12153414)/100000
+lat_possible = (3771863:3809988)/100000
+longitude = sample(long_possible,24427,replace = T)
+latitude = sample(lat_possible,24427,replace = T)
 
 # Merge with fb_intraday
 fb_data <- left_join(fb_intraday, demographics, by = "id") %>%
@@ -295,52 +323,34 @@ paco_data <- full_join(paco_hourly, demographics, by = "id") %>%
 # Individual data
 individual_data <- fb_data %>%
   bind_rows(paco_data, .id = NULL) %>%
-  filter((heart_rate > 30 & heart_rate < 200) | is.na(heart_rate))
+  filter((heart_rate > 30 & heart_rate < 200) | is.na(heart_rate)) %>%
+  mutate(
+    longitude = sample(longitude, replace = T),
+    latitude = sample(latitude, replace = T)
+  )
 
 # Remove unnecessary dataframes
-rm(paco_hourly, fb_intraday)
-```
-
-```{r create air quality dataset, message=F, warning=F, echo=F}
-# Air Quality data
-air_quality <- full_join(full_time, air_qual_4901, by = "day") %>%
-  full_join(air_qual_4902, 
-            by = c("day", "id", "sulfur_dioxide",
-                   "carbon_monoxide", "ozone")) %>%
-  select(day, id, everything()) %>%
-  mutate(id = as.factor(id)) %>%
-  arrange(day)
-```
-
-```{r moving window, message=F, warning=F, echo=F}
-# Set hours of interest
-hours = 8
-# Moving window average of sulfur dioxide
-air_quality <- 
-  air_quality %>% 
-  group_by(id) %>% 
-  arrange(day) %>%
-  mutate(
-    sulfur_dioxide_exposure_window = 
-      zoo::rollapply(sulfur_dioxide,
-                     width = hours, #how many data to include
-                     FUN = mean, #function is mean
-                     na.rm = T, #avoids NA
-                     partial = T, #skips unnecessary datapoints
-                     align = "right")) %>%
-  ungroup %>%
-  arrange(id, day)
+rm(paco_hourly, fb_intraday, paco_data, fb_data)
 ```
 
 ```{r TO DO filter your data, message=F, warning=F, echo=F}
+# Add coordinates to air quality
+air_quality <- air_quality %>%
+  mutate(
+    longitude = refinery[1],
+    latitude = refinery[2]
+  )
+
+# Merged dataframe 
 total_df <- individual_data %>%
-  #filter(sex == "male" & age > 50) %>% # Select demographic filters
-  bind_rows(air_quality, .id = NULL) %>% # add air_quality data
+  #filter(sex == "male" & age > 50) %>% # TO DO: select demographic filters
+  bind_rows(air_quality, .id = NULL) %>%
   mutate(id = as.factor(id))
 
 binding_df <- total_df %>%
-  select(-c(methane, sulfur_dioxide))
+  select(-c(methane, sulfur_dioxide)) # intermediate dataframe
 
+# To be used in spatial analysis
 spatial_df <- total_df %>%
   group_by(day) %>%
   summarize(
@@ -352,6 +362,9 @@ spatial_df <- total_df %>%
   filter(!is.na(id)) %>%
   arrange(day)
 
+rm(binding_df)
+
+# Create data_frame for basic analysis
 summary_df <- total_df %>%
   group_by(day) %>%
   summarize(
@@ -363,11 +376,10 @@ summary_df <- total_df %>%
     blood_oxygen = mean(blood_oxygen, na.rm=T)
     ) %>%
   ungroup
-
-# Make sure to write your note!
-filter_statement <- paste0("NOTE: This analysis looks at men over 50.")
-cat(filter_statement)
 ```
+
+## Filters
+This analysis looks at: ___
 
 ```{r plot theme, warning=F, message=F, echo=F}
 # http://zevross.com/blog/2014/08/04/beautiful-plotting-in-r-a-ggplot2-cheatsheet-3/#add-text-annotation-in-the-top-right-top-left-etc.-annotation_custom-and-friends
@@ -400,7 +412,7 @@ Blood Oxygen levels recorded with a pulse oximeter^[[Pulse Oximetry wiki](https:
 t-tests for Statistical Significance^[Welch two-sample t-test]
 
 These tests compare the difference between the population mean health outcome (e.g. heart rate) and the mean health outcome when the environmental input (e.g. methane) is above its median value.
-```{r plots, warning=F, message=F, echo=F}
+```{r make plot function, warning=F, message=F, echo=F}
 my_plot <- function(df = summary_df,
                     health_var,
                     health_var_name,
@@ -452,7 +464,9 @@ my_plot <- function(df = summary_df,
               subtitle=paste0("r = ", correlation,
                               ", p-value = ",round(t_test$p.value,4)))
 }
+```
 
+```{r run plots, warning=F, message=F, echo=F}
 # Blood Oxygen and Sulfur Dioxide
 my_plot(health_var = blood_oxygen,
         health_var_name = "Blood Oxygen",
@@ -498,15 +512,13 @@ cc_wgs84 <- spTransform(cc, CRS("+proj=longlat +datum=WGS84"))
 r <- ggplot(cc_wgs84, aes(x=long, y=lat)) +   
             geom_path(aes(group=group)) + coord_map("mercator")
 r + 
-  geom_point(aes(x= demographics$home_long[1], y=demographics$home_lat[1])) +
-  geom_point(aes(x= demographics$home_long[2], y=demographics$home_lat[2])) +
-  geom_point(aes(x= demographics$home_long[3], y=demographics$home_lat[3])) +
-  geom_point(aes(x= demographics$home_long[4], y=demographics$home_lat[4])) +
-  geom_point(aes(x= demographics$home_long[5], y=demographics$home_lat[5])) +
-  geom_point(aes(x= demographics$home_long[6], y=demographics$home_lat[6])) +
-  geom_point(aes(x= demographics$home_long[7], y=demographics$home_lat[7])) + 
-  geom_point(aes(x= refinery[1], y= refinery[2], color = "black"))
+  geom_point(data=spatial_df, aes(x=longitude, y=latitude, color = id), na.rm = T) + 
+  geom_point(aes(x= refinery[1], y= refinery[2]))
 
+r + 
+  geom_point(data=spatial_df, aes(x=longitude, y=latitude, 
+                                  color = heart_rate), na.rm = T) + 
+  geom_point(aes(x= refinery[1], y= refinery[2])) 
 ```
 
 ### Spatial analysis
@@ -514,27 +526,35 @@ r +
 # autocorrelation - need a universe of points
 # http://www.rspatial.org/analysis/rst/3-spauto.html#compute-moran-s-i
 # for binary data, the join-count index
-library(spdep)
+# https://cran.r-project.org/web/packages/spdep/spdep.pdf
+# Find which points are near
+
+points <- spatial_df %>% select(longitude, latitude)
+
+spatial_df_t <- spatial_df %>% select(-c(longitude, latitude))
+
+q <- SpatialPointsDataFrame(coords = points, 
+                       data = spatial_df_t, 
+                       proj4string = CRS("+proj=longlat +datum=WGS84"),
+                       match.ID = T)
+
+spat_points <- SpatialPoints(points,proj4string = CRS("+proj=longlat +datum=WGS84")) 
+points_nb <- dnearneigh(spat_points, d1 = 0, d2 = .1)
+class(points_nb)
+summary(points_nb)
+spatial_weights <- nb2mat(points_nb, zero.policy = T)
+spatial_listw <- nb2listw(points_nb, zero.policy =T)
+
+# Moran's I Monte Carlo
+moran.mc(spatial_df$heart_rate, spatial_listw, nsim=99, zero.policy = T, na.action = na.omit)
 
 # Converts to dataset for analysis
 cc_data <- as.owin(cc_wgs84)
 cc_ppp<-as.ppp(cc_data, W=cc_data) #turns dataset into point pattern
 
-library(sp)
 
-
-some_coords <- coordinates(object = spatial_df, value = c("home_long", "home_lat"))
-# don't have lat_long data for air_pollution. Need to consider.
-my_spatial <- SpatialPointsDataFrame(coords = c(spatial_df$home_long,
-                                                spatial_df$home_lat),
-                                     proj4string = '+proj=longlat +datum=WGS84',
-                                     spatial_df, 
-                                     coords.nrs = "numeric",
-                                     match.ID = T)
 library(raster)
 pointDistance(c(spatial_df$home_long, spatial_df$home_lat), lonlat = T) # distance matrix
-
-cor()
 
 # Kernel densities
 burg2 <- density(burg, sigma=0.2)
@@ -584,7 +604,6 @@ plot(env, ylim=c(0,1), main='Envelope for 99 simulations G fxn, DC')
 plot(dendc, main="Density of DC, sigma=0.4")
 plot(dc, add=TRUE)
 
-
 plot(Gest(dc), main= "G function DC") 
 plot(Fest(dc), main= "F function DC") 
 plot(Kest(dc), main= "K function DC") 
@@ -604,8 +623,9 @@ plot(dc, add=TRUE)
 ces <- readOGR(dsn ="../refinery_data/location/CES3Results", layer = "CES3Results")
 summary(ces)
 ces_lat <- spTransform(ces, CRS("+proj=longlat +datum=WGS84"))
-View(ces_lat_cc)
 ces_lat_cc <- subset(ces_lat, County == "Contra Costa")
+View(ces_lat_cc)
+summary(ces_lat_cc)
 plot(ces_lat_cc)
 
 # http://mazamascience.com/WorkingWithData/?p=1494
