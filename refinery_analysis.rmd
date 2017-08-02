@@ -10,7 +10,7 @@ output:
 # http://rmarkdown.rstudio.com/index.html
 knitr::opts_chunk$set(echo = TRUE)
 # List of R packages
-required_pkg <- c("tidyverse","maptools", "rgdal", "spatstat", "ggmap")
+required_pkg <- c("tidyverse","maptools", "rgdal", "spatstat", "ggmap", "geosphere", "leaflet")
 #pkgs_not_installed <- required_pkg[!sapply(required_pkg, function(p) require(p, character.only=T))]
 #install.packages(pkgs_not_installed, dependencies=TRUE)
 
@@ -230,6 +230,10 @@ rm(fb_intra, fb_daily)
 ```
 
 ```{r make individual data, message=F, warning=F, echo=F}
+# Refinery address
+refinery = as.numeric(geocode("525 Castro St, Richmond, CA 94801", 
+                              source = "google"))
+
 # Collect addresses
 m3_locale = as.numeric(
   geocode("460 3rd St, Richmond, CA 94801",
@@ -253,6 +257,15 @@ m16_locale = as.numeric(
   geocode("5733 Oakmont Dr, Richmond, CA 94806",
           source="google"))
 
+# Distance to refinery
+m3_distance_meters <- distm (m3_locale, refinery, fun = distHaversine)
+m5_distance_meters <- distm (m5_locale, refinery, fun = distHaversine)
+m7_distance_meters <- distm (m7_locale, refinery, fun = distHaversine)
+m9_distance_meters <- distm (m9_locale, refinery, fun = distHaversine)
+m10_distance_meters <- distm (m10_locale, refinery, fun = distHaversine)
+m11_distance_meters <- distm (m11_locale, refinery, fun = distHaversine)
+m16_distance_meters <- distm (m16_locale, refinery, fun = distHaversine)
+
 # Make demographics dataframe
 demographics <- data_frame(
   id =  c("m3","m5","m7","m9","m10","m11","m16"),
@@ -261,6 +274,10 @@ demographics <- data_frame(
           m9_locale[2], m10_locale[2], m11_locale[2], m16_locale[2]),
   home_long = c(m3_locale[1], m5_locale[1], m7_locale[1], 
            m9_locale[1], m10_locale[1], m11_locale[1], m16_locale[1]),
+  home_dist_to_refinery = c(m3_distance_meters, m5_distance_meters,
+                            m7_distance_meters, m9_distance_meters,
+                            m10_distance_meters, m11_distance_meters,
+                            m16_distance_meters),
   sex = as.factor(c("male","female","male","female","female","male","female")))
 
 # Merge with fb_intraday
@@ -398,7 +415,7 @@ my_plot <- function(df = summary_df,
   df %>%
     filter(!is.na(!!health_var) & !is.na(!!pollutant_var)) %>%
     select(UQ(health_var), UQ(pollutant_var)) %>% 
-    boot::corr() %>%
+    boot::corr() %>% # why not use cor()?
     round(3) -> correlation
 
   # t-test
@@ -462,33 +479,6 @@ my_plot(health_var = heart_rate,
 ```
 
 ## Spatial Analysis
-### Leaflet
-```{r leaflet, warning=F, message=F, echo=F}
-library(leaflet)
-# https://rstudio.github.io/leaflet/
-
-# generate map
-map = leaflet(data = spatial_df) %>% 
-  addTiles()
-map %>% addCircleMarkers(
-  lng = ~home_long,
-  lat = ~home_lat,
-  radius = 4,
-  stroke = FALSE,
-  color = "black",
-  fillOpacity = 0.8,
-  popup = paste0("ID: ", spatial_df$id, "<br>",
-                  "Age: ", spatial_df$age, "<br>",
-                  "Sex: ", spatial_df$sex)) 
-# Excess from Rich
-#  addProviderTiles(providers$Esri.WorldTerrain)
-#  addLegend("topright", pal = pal, # use custom palette
-#            values = ~Result,
-#            title = paste(d, t, sep = " "),
-#            labFormat = labelFormat(suffix = " mg/L"),
-#            opacity = 1
-# setView(lng = lonCenter, lat = latCenter, zoom = 8)
-```
 
 ### Load shapefiles
 ```{r load Contra Costa County shapefile, message=F, warning=F}
@@ -504,9 +494,6 @@ cc_wgs84 <- spTransform(cc, CRS("+proj=longlat +datum=WGS84"))
 # coordinates(cc_wgs84)
 # plot(cc_wgs84)
 
-# Converts to dataset for analysis
-cc_data <- as.owin(cc_wgs84)
-
 #plot of contra costa county
 r <- ggplot(cc_wgs84, aes(x=long, y=lat)) +   
             geom_path(aes(group=group)) + coord_map("mercator")
@@ -517,26 +504,102 @@ r +
   geom_point(aes(x= demographics$home_long[4], y=demographics$home_lat[4])) +
   geom_point(aes(x= demographics$home_long[5], y=demographics$home_lat[5])) +
   geom_point(aes(x= demographics$home_long[6], y=demographics$home_lat[6])) +
-  geom_point(aes(x= demographics$home_long[7], y=demographics$home_lat[7]))
+  geom_point(aes(x= demographics$home_long[7], y=demographics$home_lat[7])) + 
+  geom_point(aes(x= refinery[1], y= refinery[2], color = "black"))
+
+```
+
+### Spatial analysis
+```{r spatial analysis, warning=F, message=F}
+# autocorrelation - need a universe of points
+# http://www.rspatial.org/analysis/rst/3-spauto.html#compute-moran-s-i
+# for binary data, the join-count index
+library(spdep)
+
+# Converts to dataset for analysis
+cc_data <- as.owin(cc_wgs84)
+cc_ppp<-as.ppp(cc_data, W=cc_data) #turns dataset into point pattern
+
+library(sp)
+
+
+some_coords <- coordinates(object = spatial_df, value = c("home_long", "home_lat"))
+# don't have lat_long data for air_pollution. Need to consider.
+my_spatial <- SpatialPointsDataFrame(coords = c(spatial_df$home_long,
+                                                spatial_df$home_lat),
+                                     proj4string = '+proj=longlat +datum=WGS84',
+                                     spatial_df, 
+                                     coords.nrs = "numeric",
+                                     match.ID = T)
+library(raster)
+pointDistance(c(spatial_df$home_long, spatial_df$home_lat), lonlat = T) # distance matrix
+
+cor()
+
+# Kernel densities
+burg2 <- density(burg, sigma=0.2)
+burg2 <- density(burg, sigma=0.2)
+plot(burg2, main= "Burglaries")
+contour(burg2, add=T)
+
+burg2 <- density(burg, sigma=0.5)
+plot(burg2, main= "Burglaries")
+contour(burg2, add=T)
+
+#Select sigma (bandwidth) of .25 because actually shows 1st and 2nd order effects
+
+
+##2. Point Pattern Analysis
+#Pick 2: Narcotics and Disorderly Conduct
+#2 methods each (quadrats, mean nearest neighbors, G, F, Ripley's K, PCF)
+#Let's do Ripley's K and PCF
+
+#Narcotics
+par(mfrow=c(1,2))
+dnarc <- density(narc, sigma=0.4)
+env <- envelope(narc, pcf, simulate=expression(rpoispp(dnarc)), nsim=99) 
+plot(env, ylim=c(0,8), main='Envelope for 99 simulations PCF, Narcotics')
+plot(dnarc, main="Density of Narcotics, sigma=0.4")
+plot(narc, add=TRUE)
+
+par(mfrow=c(1,1))
+dnarc <- density(narc, sigma=0.4)
+env <- envelope(narc, Gest, simulate=expression(rpoispp(dnarc)), nsim=99) 
+plot(env, ylim=c(0,1), main='Envelope for 99 simulations G fxn, Narcotics')
+plot(dnarc, main="Density of Narcotics, sigma=0.4")
+plot(narc, add=TRUE)
+
+#Disorderly Conduct
+par(mfrow=c(1,2))
+dendc <- density(dc, sigma=0.4)
+env <- envelope(dc, pcf, simulate=expression(rpoispp(dendc)), nsim=99) 
+plot(env, ylim=c(0,8), main='Envelope for 99 simulations PCF, DC')
+plot(dendc, main="Density of DC, sigma=0.4")
+plot(dc, add=TRUE)
+
+par(mfrow=c(1,1))
+dendc <- density(dc, sigma=0.4)
+env <- envelope(dc, Gest, simulate=expression(rpoispp(dendc)), nsim=99) 
+plot(env, ylim=c(0,1), main='Envelope for 99 simulations G fxn, DC')
+plot(dendc, main="Density of DC, sigma=0.4")
+plot(dc, add=TRUE)
+
+
+plot(Gest(dc), main= "G function DC") 
+plot(Fest(dc), main= "F function DC") 
+plot(Kest(dc), main= "K function DC") 
+plot(pcf(dc), main= "PCF DC")
+
+par(mfrow=c(1,1))
+dendc <- density(dc, sigma=0.37)
+env <- envelope(dc, Gest, simulate=expression(rpoispp(dendc)), nsim=99) 
+plot(env, ylim=c(0,4), main='Envelope for 499 simulations PCF, DC')
+plot(dendc, main="Density of DC, sigma=0.5")
+plot(dc, add=TRUE)
 ```
 
 ### Load outside maps
 ```{r outside maps, include=F}
-library(maps)
-library(RgoogleMaps)
-
-# State data
-states <- map_data("state")
-ggplot(states, aes(x=long, y=lat)) +
-  geom_polygon(aes(group=group, fill=region), colour="black", fill="white")
-merc = CRS("+init=epsg:3857")
-ccc <- map("county", "california,contra.costa")
-
-# Google Map
-library(ggmap)
-g = get_googlemap("Richmond, CA", scale = 2)
-ggmap(g) # Still need to connect with other data (merge?)
-
 ## Load community health assessment data
 ces <- readOGR(dsn ="../refinery_data/location/CES3Results", layer = "CES3Results")
 summary(ces)
@@ -568,9 +631,33 @@ ggplot(waterDF, aes(x=long, y=lat,
   coord_map("mercator") + 
   ggtitle("Cardiovascular Health")
 ```
-### Spatial analysis
-```{r spatial analysis, warning=F, message=F}
-# moran's i - need a universe of points
-# https://stackoverflow.com/questions/15711013/spatial-autocorrelation-analysis-in-r?rq=1
 
+### Leaflet
+```{r leaflet, warning=F, message=F, echo=F}
+# https://rstudio.github.io/leaflet/
+
+# generate map
+map = leaflet(data = spatial_df) %>% 
+  addTiles()
+map %>% addCircleMarkers(
+  lng = ~home_long,
+  lat = ~home_lat,
+  radius = 4,
+  stroke = FALSE,
+  color = "black",
+  fillOpacity = 0.8,
+  popup = paste0("<b>ID: </b>", "<b>",spatial_df$id,"</b>", "<br>",
+                  "Age: ", spatial_df$age, "<br>",
+                  "Sex: ", spatial_df$sex),
+  popupOptions()) 
+
+?addCircleMarkers
+# Excess from Rich
+#  addProviderTiles(providers$Esri.WorldTerrain)
+#  addLegend("topright", pal = pal, # use custom palette
+#            values = ~Result,
+#            title = paste(d, t, sep = " "),
+#            labFormat = labelFormat(suffix = " mg/L"),
+#            opacity = 1
+# setView(lng = lonCenter, lat = latCenter, zoom = 8)
 ```
