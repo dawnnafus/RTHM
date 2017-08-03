@@ -20,13 +20,15 @@ lapply(required_pkg, library, character.only = TRUE)
 
 ```{r time dataset, message=F, warning=F, echo=F}
 # Inputs here are date_begin and date_end
-timeframe <- function(date_begin = "2016-05-09 14:00", date_end = "2016-08-11 0:00"){
+timeframe <- function(date_begin = "2016-05-09 14:00", 
+                      date_end = "2016-08-11 0:00"){
   exp_begin = as.POSIXct(date_begin, tz="GMT", format="%Y-%m-%d %H")
   exp_end = as.POSIXct(date_end, tz="GMT", format="%Y-%m-%d %H")
   out = data_frame(day = seq(exp_begin, exp_end, by = 3600))
   return(out)
 }
 full_time <- timeframe()
+
 # Manual
 date_begin = "2016-05-09 14:00"
 date_end = "2016-08-11 0:00"
@@ -305,8 +307,8 @@ demographics <- data_frame(
 set.seed(0)
 long_possible = (-12243009:-12153414)/100000
 lat_possible = (3771863:3809988)/100000
-longitude = sample(long_possible,24427,replace = T)
-latitude = sample(lat_possible,24427,replace = T)
+longitude = sample(long_possible,24427, replace = T)
+latitude = sample(lat_possible,24427, replace = T)
 
 # Merge with fb_intraday
 fb_data <- left_join(fb_intraday, demographics, by = "id") %>%
@@ -401,7 +403,7 @@ theme_fair_tech <- theme(
 # Notes on Data Sources
 Methane and sulfur dioxide readings collected in real-time by [Fenceline.org](fenceline.org)
 
-Heart rate collected with Fitbit health monitors
+Heart rate collected with Fitbit health monitors.
 
 Blood Oxygen levels recorded with a pulse oximeter^[[Pulse Oximetry wiki](https://en.wikipedia.org/wiki/Pulse_oximetry)]
 
