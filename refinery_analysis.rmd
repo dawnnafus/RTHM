@@ -548,12 +548,78 @@ spatial_weights <- nb2mat(points_nb, zero.policy = T)
 spatial_listw <- nb2listw(points_nb, zero.policy =T)
 
 # Moran's I Monte Carlo
-moran.mc(spatial_df$heart_rate, spatial_listw, nsim=99, zero.policy = T, na.action = na.omit)
+moran.mc(spatial_df$heart_rate, spatial_listw, nsim=99,
+         zero.policy = T, na.action = na.omit)
+```
 
+### Load outside maps
+```{r outside maps, include=F}
+## Load community health assessment data
+ces <- readOGR(dsn ="../refinery_data/location/CES3Results", layer = "CES3Results")
+#summary(ces)
+ces_lat <- spTransform(ces, CRS("+proj=longlat +datum=WGS84"))
+ces_lat_cc <- subset(ces_lat, County == "Contra Costa")
+# View(ces_lat_cc)
+# summary(ces_lat_cc)
+# plot(ces_lat_cc)
+
+# http://mazamascience.com/WorkingWithData/?p=1494
+# add to data a new column termed "id" composed of the rownames of data
+ces_lat_cc@data$id <- rownames(ces_lat_cc@data)
+
+# create a data.frame from our spatial object
+new_data <- fortify(ces_lat_cc, region = "id")
+
+# merge the "fortified" data with the data from our spatial object
+waterDF <- merge(new_data, ces_lat_cc@data, by = "id")
+
+# Map the cardiovascular instances
+ggplot(waterDF, aes(x=long, y=lat, 
+                    group = group, 
+                    fill = Cardiovasc)) +
+  geom_polygon()  +
+  geom_path(color = "white") +
+  scale_fill_gradient(
+    low = "plum1", high = "purple4",
+    breaks=c(500000,1000000,1500000),
+    labels=c("Low","Medium","High")) +
+  coord_map("mercator") + 
+  ggtitle("Cardiovascular Health")
+```
+
+### Leaflet
+```{r leaflet, warning=F, message=F, echo=F}
+# https://rstudio.github.io/leaflet/
+
+# generate map
+map = leaflet(data = spatial_df) %>% 
+  addTiles()
+map %>% addCircleMarkers(
+  lng = ~home_long,
+  lat = ~home_lat,
+  radius = 4,
+  stroke = FALSE,
+  color = "black",
+  fillOpacity = 0.8,
+  popup = paste0("<b>ID: </b>", "<b>",spatial_df$id,"</b>", "<br>",
+                  "Age: ", spatial_df$age, "<br>",
+                  "Sex: ", spatial_df$sex),
+  popupOptions()) 
+
+# Excess from Rich
+#  addProviderTiles(providers$Esri.WorldTerrain)
+#  addLegend("topright", pal = pal, # use custom palette
+#            values = ~Result,
+#            title = paste(d, t, sep = " "),
+#            labFormat = labelFormat(suffix = " mg/L"),
+#            opacity = 1
+# setView(lng = lonCenter, lat = latCenter, zoom = 8)
+```
+
+```{r point pattern}
 # Converts to dataset for analysis
 cc_data <- as.owin(cc_wgs84)
 cc_ppp<-as.ppp(cc_data, W=cc_data) #turns dataset into point pattern
-
 
 library(raster)
 pointDistance(c(spatial_df$home_long, spatial_df$home_lat), lonlat = T) # distance matrix
@@ -569,7 +635,6 @@ plot(burg2, main= "Burglaries")
 contour(burg2, add=T)
 
 #Select sigma (bandwidth) of .25 because actually shows 1st and 2nd order effects
-
 
 ##2. Point Pattern Analysis
 #Pick 2: Narcotics and Disorderly Conduct
@@ -617,69 +682,5 @@ env <- envelope(dc, Gest, simulate=expression(rpoispp(dendc)), nsim=99)
 plot(env, ylim=c(0,4), main='Envelope for 499 simulations PCF, DC')
 plot(dendc, main="Density of DC, sigma=0.5")
 plot(dc, add=TRUE)
-```
 
-### Load outside maps
-```{r outside maps, include=F}
-## Load community health assessment data
-ces <- readOGR(dsn ="../refinery_data/location/CES3Results", layer = "CES3Results")
-summary(ces)
-ces_lat <- spTransform(ces, CRS("+proj=longlat +datum=WGS84"))
-ces_lat_cc <- subset(ces_lat, County == "Contra Costa")
-View(ces_lat_cc)
-summary(ces_lat_cc)
-plot(ces_lat_cc)
-
-# http://mazamascience.com/WorkingWithData/?p=1494
-# add to data a new column termed "id" composed of the rownames of data
-ces_lat_cc@data$id <- rownames(ces_lat_cc@data)
-
-# create a data.frame from our spatial object
-new_data <- fortify(ces_lat_cc, region = "id")
-
-# merge the "fortified" data with the data from our spatial object
-waterDF <- merge(new_data, ces_lat_cc@data, by = "id")
-
-# Map the cardiovascular instances
-ggplot(waterDF, aes(x=long, y=lat, 
-                    group = group, 
-                    fill = Cardiovasc)) +
-  geom_polygon()  +
-  geom_path(color = "white") +
-  scale_fill_gradient(
-    low = "plum1", high = "purple4",
-    breaks=c(500000,1000000,1500000),
-    labels=c("Low","Medium","High")) +
-  coord_map("mercator") + 
-  ggtitle("Cardiovascular Health")
-```
-
-### Leaflet
-```{r leaflet, warning=F, message=F, echo=F}
-# https://rstudio.github.io/leaflet/
-
-# generate map
-map = leaflet(data = spatial_df) %>% 
-  addTiles()
-map %>% addCircleMarkers(
-  lng = ~home_long,
-  lat = ~home_lat,
-  radius = 4,
-  stroke = FALSE,
-  color = "black",
-  fillOpacity = 0.8,
-  popup = paste0("<b>ID: </b>", "<b>",spatial_df$id,"</b>", "<br>",
-                  "Age: ", spatial_df$age, "<br>",
-                  "Sex: ", spatial_df$sex),
-  popupOptions()) 
-
-?addCircleMarkers
-# Excess from Rich
-#  addProviderTiles(providers$Esri.WorldTerrain)
-#  addLegend("topright", pal = pal, # use custom palette
-#            values = ~Result,
-#            title = paste(d, t, sep = " "),
-#            labFormat = labelFormat(suffix = " mg/L"),
-#            opacity = 1
-# setView(lng = lonCenter, lat = latCenter, zoom = 8)
 ```
