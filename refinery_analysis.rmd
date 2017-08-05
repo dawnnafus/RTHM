@@ -549,74 +549,6 @@ spatial_listw <- nb2listw(points_nb, zero.policy =T)
 
 # Moran's I Monte Carlo
 moran.mc(spatial_df$heart_rate, spatial_listw, nsim=99, zero.policy = T, na.action = na.omit)
-
-# Converts to dataset for analysis
-cc_data <- as.owin(cc_wgs84)
-cc_ppp<-as.ppp(cc_data, W=cc_data) #turns dataset into point pattern
-
-
-library(raster)
-pointDistance(c(spatial_df$home_long, spatial_df$home_lat), lonlat = T) # distance matrix
-
-# Kernel densities
-burg2 <- density(burg, sigma=0.2)
-burg2 <- density(burg, sigma=0.2)
-plot(burg2, main= "Burglaries")
-contour(burg2, add=T)
-
-burg2 <- density(burg, sigma=0.5)
-plot(burg2, main= "Burglaries")
-contour(burg2, add=T)
-
-#Select sigma (bandwidth) of .25 because actually shows 1st and 2nd order effects
-
-
-##2. Point Pattern Analysis
-#Pick 2: Narcotics and Disorderly Conduct
-#2 methods each (quadrats, mean nearest neighbors, G, F, Ripley's K, PCF)
-#Let's do Ripley's K and PCF
-
-#Narcotics
-par(mfrow=c(1,2))
-dnarc <- density(narc, sigma=0.4)
-env <- envelope(narc, pcf, simulate=expression(rpoispp(dnarc)), nsim=99) 
-plot(env, ylim=c(0,8), main='Envelope for 99 simulations PCF, Narcotics')
-plot(dnarc, main="Density of Narcotics, sigma=0.4")
-plot(narc, add=TRUE)
-
-par(mfrow=c(1,1))
-dnarc <- density(narc, sigma=0.4)
-env <- envelope(narc, Gest, simulate=expression(rpoispp(dnarc)), nsim=99) 
-plot(env, ylim=c(0,1), main='Envelope for 99 simulations G fxn, Narcotics')
-plot(dnarc, main="Density of Narcotics, sigma=0.4")
-plot(narc, add=TRUE)
-
-#Disorderly Conduct
-par(mfrow=c(1,2))
-dendc <- density(dc, sigma=0.4)
-env <- envelope(dc, pcf, simulate=expression(rpoispp(dendc)), nsim=99) 
-plot(env, ylim=c(0,8), main='Envelope for 99 simulations PCF, DC')
-plot(dendc, main="Density of DC, sigma=0.4")
-plot(dc, add=TRUE)
-
-par(mfrow=c(1,1))
-dendc <- density(dc, sigma=0.4)
-env <- envelope(dc, Gest, simulate=expression(rpoispp(dendc)), nsim=99) 
-plot(env, ylim=c(0,1), main='Envelope for 99 simulations G fxn, DC')
-plot(dendc, main="Density of DC, sigma=0.4")
-plot(dc, add=TRUE)
-
-plot(Gest(dc), main= "G function DC") 
-plot(Fest(dc), main= "F function DC") 
-plot(Kest(dc), main= "K function DC") 
-plot(pcf(dc), main= "PCF DC")
-
-par(mfrow=c(1,1))
-dendc <- density(dc, sigma=0.37)
-env <- envelope(dc, Gest, simulate=expression(rpoispp(dendc)), nsim=99) 
-plot(env, ylim=c(0,4), main='Envelope for 499 simulations PCF, DC')
-plot(dendc, main="Density of DC, sigma=0.5")
-plot(dc, add=TRUE)
 ```
 
 ### Load outside maps
@@ -671,15 +603,5 @@ map %>% addCircleMarkers(
   popup = paste0("<b>ID: </b>", "<b>",spatial_df$id,"</b>", "<br>",
                   "Age: ", spatial_df$age, "<br>",
                   "Sex: ", spatial_df$sex),
-  popupOptions()) 
-
-?addCircleMarkers
-# Excess from Rich
-#  addProviderTiles(providers$Esri.WorldTerrain)
-#  addLegend("topright", pal = pal, # use custom palette
-#            values = ~Result,
-#            title = paste(d, t, sep = " "),
-#            labFormat = labelFormat(suffix = " mg/L"),
-#            opacity = 1
-# setView(lng = lonCenter, lat = latCenter, zoom = 8)
+  popupOptions())
 ```
