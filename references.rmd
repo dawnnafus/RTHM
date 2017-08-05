@@ -11,6 +11,13 @@ knitr::opts_chunk$set(echo = TRUE)
 
 Some notes, sources and references.
 
+# Data Sources
+Methane and sulfur dioxide readings collected in real-time by [Fenceline.org](fenceline.org)
+
+Heart rate collected with Fitbit health monitors.
+
+Blood Oxygen levels recorded with a pulse oximeter^[[Pulse Oximetry wiki](https://en.wikipedia.org/wiki/Pulse_oximetry)]
+
 # Coding with R
 
 + [Beginner's tutorial](http://r4ds.had.co.nz/)
