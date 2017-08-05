@@ -7,7 +7,6 @@ output:
 ---
 
 ```{r setup, include=FALSE, echo=F}
-# http://rmarkdown.rstudio.com/index.html
 knitr::opts_chunk$set(echo = TRUE)
 # List of R packages
 required_pkg <- c("tidyverse","maptools", "rgdal", "spatstat", "ggmap", "geosphere", "leaflet", "spdep", "sp")
@@ -384,8 +383,6 @@ summary_df <- total_df %>%
 This analysis looks at: ___
 
 ```{r plot theme, warning=F, message=F, echo=F}
-# http://zevross.com/blog/2014/08/04/beautiful-plotting-in-r-a-ggplot2-cheatsheet-3/#add-text-annotation-in-the-top-right-top-left-etc.-annotation_custom-and-friends
-
 # Create ggplot theme
 theme_fair_tech <- theme(
   legend.position = "bottom",
@@ -460,11 +457,15 @@ my_plot <- function(df = summary_df,
       scale_x_continuous() +
       scale_y_continuous() +
       theme_fair_tech + 
-      labs(x=paste0(health_var_name," (",health_var_units,")"), 
-           y=paste0(pollutant_var_name," (",pollutant_var_units,")")) +
-      ggtitle(paste0(health_var_name, " & ", pollutant_var_name),
+      labs(x=paste0(health_var_name,
+                    " (",health_var_units,")"), 
+           y=paste0(pollutant_var_name,
+                    " (",pollutant_var_units,")")) +
+      ggtitle(paste0(health_var_name, 
+                     " & ", pollutant_var_name),
               subtitle=paste0("r = ", correlation,
-                              ", p-value = ",round(t_test$p.value,4)))
+                              ", p-value = ",
+                              round(t_test$p.value,4)))
 }
 ```
 
@@ -498,8 +499,7 @@ my_plot(health_var = heart_rate,
 
 ### Load shapefiles
 ```{r load Contra Costa County shapefile, message=F, warning=F}
-# Loads pre-saved file from
-# http://www.contracosta.ca.gov/4475/Maps-and-Data
+# Loads pre-saved file from website
 # Projection: NAD 1983 StatePlane California III FIPS 0403 Feet
 cc <- readOGR(dsn ="../refinery_data/location/BaseMapGrid", layer = "GRD_PWD_BaseMap_0106")
 # summary(cc)
@@ -511,58 +511,61 @@ cc_wgs84 <- spTransform(cc, CRS("+proj=longlat +datum=WGS84"))
 # plot(cc_wgs84)
 
 #plot of contra costa county
-r <- ggplot(cc_wgs84, aes(x=long, y=lat)) +   
-            geom_path(aes(group=group)) + coord_map("mercator")
+r <- ggplot(cc_wgs84, aes(x=long, y=lat)) + 
+  geom_path(aes(group=group)) + 
+  coord_map("mercator")
 r + 
-  geom_point(data=spatial_df, aes(x=longitude, y=latitude, color = id), na.rm = T) + 
+  geom_point(data=spatial_df, 
+             aes(x=longitude, y=latitude, color = id), 
+             na.rm = T) + 
   geom_point(aes(x= refinery[1], y= refinery[2]))
 
 r + 
-  geom_point(data=spatial_df, aes(x=longitude, y=latitude, 
-                                  color = heart_rate), na.rm = T) + 
+  geom_point(data=spatial_df, 
+             aes(x=longitude, y=latitude,
+                 color = heart_rate), na.rm = T) + 
   geom_point(aes(x= refinery[1], y= refinery[2])) 
 ```
 
 ### Spatial analysis
-```{r spatial analysis, warning=F, message=F}
-# autocorrelation - need a universe of points
-# http://www.rspatial.org/analysis/rst/3-spauto.html#compute-moran-s-i
-# for binary data, the join-count index
-# https://cran.r-project.org/web/packages/spdep/spdep.pdf
-# Find which points are near
+```{r spatial autocorrelation, warning=F, message=F}
+# Spatial autocorrelation
+# For binary data, use the join-count index
 
+# First, determine which points are near
 points <- spatial_df %>% select(longitude, latitude)
 
 spatial_df_t <- spatial_df %>% select(-c(longitude, latitude))
 
-q <- SpatialPointsDataFrame(coords = points, 
-                       data = spatial_df_t, 
-                       proj4string = CRS("+proj=longlat +datum=WGS84"),
-                       match.ID = T)
+q <- SpatialPointsDataFrame(coords = points,
+                            data = spatial_df_t,
+                            proj4string = 
+                              CRS("+proj=longlat +datum=WGS84"),
+                            match.ID = T)
 
 spat_points <- SpatialPoints(points,proj4string = CRS("+proj=longlat +datum=WGS84")) 
 points_nb <- dnearneigh(spat_points, d1 = 0, d2 = .1)
-class(points_nb)
-summary(points_nb)
+#summary(points_nb)
+
 spatial_weights <- nb2mat(points_nb, zero.policy = T)
 spatial_listw <- nb2listw(points_nb, zero.policy =T)
 
 # Moran's I Monte Carlo
-moran.mc(spatial_df$heart_rate, spatial_listw, nsim=99, zero.policy = T, na.action = na.omit)
+moran.mc(spatial_df$heart_rate, spatial_listw, nsim=99,
+         zero.policy = T, na.action = na.omit)
 ```
 
 ### Load outside maps
 ```{r outside maps, include=F}
 ## Load community health assessment data
 ces <- readOGR(dsn ="../refinery_data/location/CES3Results", layer = "CES3Results")
-summary(ces)
+# summary(ces)
 ces_lat <- spTransform(ces, CRS("+proj=longlat +datum=WGS84"))
 ces_lat_cc <- subset(ces_lat, County == "Contra Costa")
-View(ces_lat_cc)
-summary(ces_lat_cc)
-plot(ces_lat_cc)
+# View(ces_lat_cc)
+# summary(ces_lat_cc)
+# plot(ces_lat_cc)
 
-# http://mazamascience.com/WorkingWithData/?p=1494
 # add to data a new column termed "id" composed of the rownames of data
 ces_lat_cc@data$id <- rownames(ces_lat_cc@data)
 
@@ -588,9 +591,7 @@ ggplot(waterDF, aes(x=long, y=lat,
 
 ### Leaflet
 ```{r leaflet, warning=F, message=F, echo=F}
-# https://rstudio.github.io/leaflet/
-
-# generate map
+# Generate dynamic map
 map = leaflet(data = spatial_df) %>% 
   addTiles()
 map %>% addCircleMarkers(
