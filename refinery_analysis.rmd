@@ -184,7 +184,7 @@ paco <- paco %>%
   arrange(t)
 
 # Remove incorrect values
-paco$SPO2[paco$SPO2 == 0 | paco$SPO2 > 100 | paco$SPO2 < 80] <- NA
+paco$SPO2[paco$SPO2 > 100 | paco$SPO2 < 80] <- NA
 # Make hourly dataframe
 paco_hourly <- paco %>%
   # Select the person, day and hour of interest
