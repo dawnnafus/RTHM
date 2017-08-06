@@ -103,9 +103,26 @@ GPS. Data.
 
 8. Filters
 
-!!
+  + In the next code chunk `TO DO filter your data`, you will need to select the filters you would like to apply to the analysis. (Note, this is only needed for detailed statistics. You will be able to play with the interactive plots, but those will not provide statistics at this point.) In order to filter, you will need do two things:
+  1. Get rid of the `#` at the front of the `filter` line under the `# Merged dataframe` header.
+  2. Enter the filters in the parentheses.
+    + For text-based filters, the formula to follow is `variable_name` `symbol` `"entry"`. The symbols you can use are `==` for matches exactly, `!=` for does not match or, slightly more advanced `%in%` followed by a grouping of entries like `c("black", "white")`. Note that each entry has "" around it.
+    + For numbers-based filters, the same basic formula applies: `variable_name` `symbol` `number`. The symbols can be `==`, `!=`, `>`, `<`, `>=`, `=<`, or again `%in%` with a grouping such as `c(55:65)`.
+  3. Combine filters
+    + In order to apply more than one filter, you will need to decide how they should be combined. The choices are simple: `&` (and) or `|` (or). So if you want to only examine black females, you would enter `filter(race == "black" & sex == "female")` but if you wanted black or female, you would simply replace `&` with `|`. If you want to combine conditions, use parentheses. For example, if you want to examine white males and those over 50, you would write `filter((race =="white" & sex == "male") | age > 50)`.
 
 9. Making plots
+
+To make your plot, you will need to simply follow the format provided. For example: 
+```
+my_plot(health_var = heart_rate,
+        health_var_name = "Heart Rate",
+        health_var_units = "bpm",
+        pollutant_var = methane,
+        pollutant_var_name = "Methane",
+        pollutant_var_units = "ppb")
+```
+In this case, if you want to change the health indicator, you would change the first three entries. So instead of `heart_rate`, you would write `blood_oxygen`. Never change the values before the `=`.
 
 10. Spatial analysis...
   
