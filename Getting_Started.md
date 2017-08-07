@@ -45,7 +45,7 @@ Image.
 
 **Next**, download RStudio [here](https://www.rstudio.com/products/rstudio/download/#download). RStudio is a user interface to easily work with R. ![RStudio download page](images/RStudio_download_page.png)
 
-Create two side-by-side folders. One is titled: "refinery-data" while the other is "refinery-stats." ![Folders](images/folders.png)
+Create two side-by-side folders. One is titled: "refinery_data" while the other is "refinery_stats." ![Folders](images/folders.png)
 
 Download the analysis file (refinery-analysis.rmd) from github [https://github.com/niklaslollo/refinery-stats/](https://github.com/niklaslollo/refinery-stats/), put it in "refinery-stats." Double-click on the file and RStudio should open. 
 
@@ -63,7 +63,7 @@ Acquire the needed datasets:
     + Feed 4902 Methane
   4. GPS data
   
-Put these datasets side-by-side in the "refinery-data" folder.
+Put these datasets side-by-side in the "refinery_data" folder.
 
 ## Data management
 Here is how each dataset should look. Please make sure you follow this template exactly.
@@ -92,9 +92,13 @@ Here is how each dataset should look. Please make sure you follow this template 
 
   + What are the project start and end date? Select the very beginning of the data and the very end even if no individual dataset runs for the entire length.
   + Insert your dates in the exact same format given: e.g. `2016-05-09 14:00`. Replace the code given for start and end date.
+  
   ```
-  date_begin = "2016-05-09 14:00"
-  date_end = "2016-08-11 0:00"
+  
+    date_begin = "2016-05-09 14:00"
+  
+    date_end = "2016-08-11 0:00"
+  
   ```
 
 **3. Loading pollution data**
@@ -105,14 +109,23 @@ Here is how each dataset should look. Please make sure you follow this template 
 **4. Exposure window**
 
   + The next entry point is the exposure window. This is automatically set at `8` hours. If you would like to change that, in the `r exposure window` code chunk you will find a parameter called `width`. Feel free to use `ctrl-F` to locate this. Change the number to change the exposure window. You can also change `sulfur_dioxide` to your pollutant of choice. Make sure to rename the variable from `sulfur_dioxide_exposure_window` to a new name. I recommend using `ctrl-F` to find and replace all instances of the old name.
+  
   ```
-  sulfur_dioxide_exposure_window = 
+  
+    sulfur_dioxide_exposure_window =
+  
       zoo::rollapply(sulfur_dioxide,
-                     width = 8, #TO DO: Select number of hours to include
+      
+                     width = 8, #TO DO: Select number of hours to include 
+                     
                      FUN = mean, #function is mean
-                     na.rm = T, #avoids NA
+                     
+                     na.rm = T, #avoids NA 
+                     
                      partial = T, #skips unnecessary datapoints
+                     
                      align = "right")) %>%
+                     
   ```
   
 **5. Paco data**
