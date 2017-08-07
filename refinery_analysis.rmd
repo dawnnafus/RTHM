@@ -143,6 +143,7 @@ air_quality <-
                      align = "right")) %>%
   ungroup %>%
   arrange(id, day)
+
 ```
 
 ```{r load paco data, warning=F, message=F, echo=F}

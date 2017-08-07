@@ -5,7 +5,7 @@ title: Getting Started
 # 1. Executive Summary
 
 ## R
-First, you need to download [R](https://cran.cnr.berkeley.edu/) and [RStudio] (https://www.rstudio.com/products/RStudio/#Desktop). Both are free. Make sure to download the correct R version for your operating system and the desktop version of RStudio.
+First, you need to download [R](https://cran.cnr.berkeley.edu/) and [RStudio](https://www.rstudio.com/products/RStudio/#Desktop). Both are free. Make sure to download the correct R version for your operating system and the desktop version of RStudio.
 
 The versions used to create the code are listed below. Other versions may or may not work with the code.
 
@@ -21,7 +21,14 @@ And finally, this is a highly recommended tutorial for getting started with R, h
 + http://r4ds.had.co.nz/introduction.html
 
 ## Data
-You need to collect your data, and make sure it is in the right location to be read by the code. The key datasets are: symptoms reporting (PACO), Fitbit, GPS, and refinery pollution data. The source of these data are listed in the references document.
+You need to collect your data, and make sure it is in the right location to be read by the code. The key datasets are: 
+
+1. Symptoms reporting (Paco)
+2. Fitbit
+3. Refinery pollution
+4. GPS/ Demographic data. 
+
+The sources of these data are listed in the references document.
 
 ## Manipulating the code
 Throughout the code, there are various user inputs and selections. These are marked in the code, but will be noted below in the detailed instructions. For instance, you will be asked to make the timeframe, id's, and exposure windows relevant for your project.
@@ -59,12 +66,19 @@ Acquire the needed datasets:
 Put these datasets side-by-side in the "refinery-data" folder.
 
 ## Data management
-Here is how each dataset should look. Please make sure you follow this exactly.
+Here is how each dataset should look. Please make sure you follow this template exactly.
 
-+ Paco. Image.
-+ Fitbit. Image.
-+ Pollution. Image.
-+ GPS. Data.
+1. **Paco**
+    + User inputted reports. These should be collated into one file. ![image](images/paco.png)
+  
+2. **Fitbit**
+    + Within day activity for each participant. ![image](images/fitbit.png)
+  
+3. **Pollution**
+    + Feed data for non-methane ![image](images/AirQuality.png)
+    + Feed data for methane ![image](images/methane.png)
+  
+4. **GPS/ Demographic data**
 
 ## Adjusting the code for your project
 
@@ -78,15 +92,28 @@ Here is how each dataset should look. Please make sure you follow this exactly.
 
   + What are the project start and end date? Select the very beginning of the data and the very end even if no individual dataset runs for the entire length.
   + Insert your dates in the exact same format given: e.g. `2016-05-09 14:00`. Replace the code given for start and end date.
+  ```
+  date_begin = "2016-05-09 14:00"
+  date_end = "2016-08-11 0:00"
+  ```
 
 **3. Loading pollution data**
 
   + General principle: `read_csv` simply reads the csv listed at the end of a given filepath. If you have followed my suggested folder structure, the code should simply work. However, a few things to note: `..` means go "up" one folder. You will start wherever you have saved refinery-analysis.rmd.
-  + Pollution: Make sure to do this for all 4 datasets.
+  + Pollution: Make sure to do this for all four datasets, two each from feed 4902 and 4901.
 
 **4. Exposure window**
 
-  + The next entry point is the exposure window. This is automatically set at `8` hours. If you would like to change that, in the `r exposure window` code chunk you will find a parameter called `width`. Feel free to use `cntl-F` to locate this. Change the number to change the exposure window.
+  + The next entry point is the exposure window. This is automatically set at `8` hours. If you would like to change that, in the `r exposure window` code chunk you will find a parameter called `width`. Feel free to use `ctrl-F` to locate this. Change the number to change the exposure window. You can also change `sulfur_dioxide` to your pollutant of choice. Make sure to rename the variable from `sulfur_dioxide_exposure_window` to a new name. I recommend using `ctrl-F` to find and replace all instances of the old name.
+  ```
+  sulfur_dioxide_exposure_window = 
+      zoo::rollapply(sulfur_dioxide,
+                     width = 8, #TO DO: Select number of hours to include
+                     FUN = mean, #function is mean
+                     na.rm = T, #avoids NA
+                     partial = T, #skips unnecessary datapoints
+                     align = "right")) %>%
+  ```
   
 **5. Paco data**
 
