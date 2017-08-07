@@ -8,7 +8,7 @@ title: Sources, References and Notes
 2. Heart rate data collected with Fitbit health monitors.
 3. Other symptoms and blood oxygen data come from participant recordings. Blood oxygen levels recorded with a [pulse oximeter](https://en.wikipedia.org/wiki/Pulse_oximetry).
 
-All data is aggregated/ summarized by the hour. 
+All data is aggregated or summarized by the hour. 
 
 ## References
 
