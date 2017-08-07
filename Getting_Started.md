@@ -1,11 +1,11 @@
 ## How to use this code - Executive Summary
 
 ### R
-First, you need to download R (https://cran.cnr.berkeley.edu/) and RStudio (https://www.rstudio.com/products/RStudio/#Desktop). Both are free. Make sure to download the correct R version for your operating system and the desktop version of RStudio.
+First, you need to download [R](https://cran.cnr.berkeley.edu/) and [RStudio] (https://www.rstudio.com/products/RStudio/#Desktop). Both are free. Make sure to download the correct R version for your operating system and the desktop version of RStudio.
 
 The versions used to create the code are listed below. Other versions may or may not work with the code.
 
-+ RStudio version 1.0.143
++ RStudio version 1.0.153
 + R version 3.4.0
 
 This is the key package needed for the code. The code installs and/or loads it automatically, but just in case the version is listed below.
@@ -29,13 +29,14 @@ Image.
 
 ## Detailed instructions
 ### If you haven't used R before
-Download R at this [webpage](r). Image.
 
-Next, download RStudio [here](rstudio.com). RStudio is a user interface to easily work with R. Image.
+**First**, download R at this [webpage](https://cran.cnr.berkeley.edu/).![R download page](images/R_download_page.png)
 
-Create two side-by-side folders. One is titled: "refinery-data" while the other is "refinery-stats." Image.
+**Next**, download RStudio [here](https://www.rstudio.com/products/rstudio/download/#download). RStudio is a user interface to easily work with R. ![RStudio download page](images/RStudio_download_page.png)
 
-Download the analysis file (refinery-analysis.rmd), put it in "refinery-stats." Double-click on the file and RStudio should open. 
+Create two side-by-side folders. One is titled: "refinery-data" while the other is "refinery-stats." ![Folders](images/folders.png)
+
+Download the analysis file (refinery-analysis.rmd) from github [https://github.com/niklaslollo/refinery-stats/](https://github.com/niklaslollo/refinery-stats/), put it in "refinery-stats." Double-click on the file and RStudio should open. 
 
 ### Once you've installed and set-up R
 
@@ -43,8 +44,7 @@ Acquire the needed datasets:
 
   1. Paco
   2. Fitbit
-    + For all users
-    + Intraday
+    + Within day data for all users
   3. Pollution data
     + Feed 4901
     + Feed 4901 Methane
