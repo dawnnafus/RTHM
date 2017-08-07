@@ -132,8 +132,8 @@ my_plot(health_var = heart_rate,
 ```
 In this case, if you want to change the health indicator, you would change the first three entries. So instead of `heart_rate`, you would write `blood_oxygen`. Never change the values before the `=`.
 
-**10. Spatial analysis...**
-  
+**10. Spatial analysis**
+
     
   
 
