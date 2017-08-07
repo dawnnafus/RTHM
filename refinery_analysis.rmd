@@ -7,10 +7,9 @@ output:
 ---
 
 ```{r setup, include=FALSE, echo=F}
-# http://rmarkdown.rstudio.com/index.html
 knitr::opts_chunk$set(echo = TRUE)
 # List of R packages
-required_pkg <- c("tidyverse","maptools", "rgdal", "spatstat", "ggmap")
+required_pkg <- c("tidyverse","maptools", "rgdal", "spatstat", "ggmap", "geosphere", "leaflet", "spdep", "sp")
 #pkgs_not_installed <- required_pkg[!sapply(required_pkg, function(p) require(p, character.only=T))]
 #install.packages(pkgs_not_installed, dependencies=TRUE)
 
@@ -20,18 +19,19 @@ lapply(required_pkg, library, character.only = TRUE)
 
 ```{r time dataset, message=F, warning=F, echo=F}
 # Inputs here are date_begin and date_end
-timeframe <- function(date_begin = "2016-05-09 14:00", date_end = "2016-08-11 0:00"){
+date_begin = "2016-05-09 14:00"
+date_end = "2016-08-11 0:00"
+exp_begin = as.POSIXct(date_begin, tz="GMT", format="%Y-%m-%d %H")
+exp_end = as.POSIXct(date_end, tz="GMT", format="%Y-%m-%d %H")
+
+timeframe <- function(date_begin = date_begin, 
+                      date_end = date_end){
   exp_begin = as.POSIXct(date_begin, tz="GMT", format="%Y-%m-%d %H")
   exp_end = as.POSIXct(date_end, tz="GMT", format="%Y-%m-%d %H")
   out = data_frame(day = seq(exp_begin, exp_end, by = 3600))
   return(out)
 }
 full_time <- timeframe()
-# Manual
-date_begin = "2016-05-09 14:00"
-date_end = "2016-08-11 0:00"
-exp_begin = as.POSIXct(date_begin, tz="GMT", format="%Y-%m-%d %H")
-exp_end = as.POSIXct(date_end, tz="GMT", format="%Y-%m-%d %H")
 ```
 
 ```{r load air quality data, warning=F, message=F, echo=F}
@@ -59,7 +59,7 @@ hourly_4902 <- feed_4902 %>%
   arrange(day) %>%
   full_join(full_time, by = "day")
 
-# Do the same for the other feed4902 dataframe
+# Do the same for the other feed 4902 dataframe
 feed_4902_methane[feed_4902_methane == 0] <- NA
 hourly_4902_methane <- feed_4902_methane %>%
     group_by(
@@ -74,6 +74,7 @@ hourly_4902_methane <- feed_4902_methane %>%
   arrange(day) %>%
   full_join(full_time, by = "day")
 
+# Merge feed 4902 data
 air_qual_4902 <- right_join(hourly_4902, hourly_4902_methane, by = "day") %>%
   mutate(id = "feed_4902")
 
@@ -99,7 +100,49 @@ air_qual_4901 <- feed_4901 %>%
 # Remove intermediate dataframes
 rm(hourly_4902, hourly_4902_methane)
 # Remove original dataframes
-rm(feed_4901, feed_4902,feed_4902_methane)
+rm(feed_4901, feed_4902, feed_4902_methane)
+```
+
+```{r create air quality dataset, message=F, warning=F, echo=F}
+# Merge feeds
+air_quality <- full_join(full_time, air_qual_4901, by = "day") %>%
+  full_join(air_qual_4902, 
+            by = c("day", "id", "sulfur_dioxide",
+                   "carbon_monoxide", "ozone")) %>%
+  select(day, id, everything()) %>%
+  mutate(id = as.factor(id)) %>%
+  arrange(day)
+
+# Remove intermediate dataframes
+rm(air_qual_4901, air_qual_4902)
+
+# Collect refinery address from google
+refinery = as.numeric(geocode("525 Castro St, Richmond, CA 94801", 
+                              source = "google"))
+
+# Add refinery coordinates to air quality
+air_quality <- air_quality %>%
+  mutate(
+    longitude = refinery[1],
+    latitude = refinery[2])
+```
+
+```{r exposure window, message=F, warning=F, echo=F}
+# Moving window average of sulfur dioxide
+air_quality <- 
+  air_quality %>% 
+  group_by(id) %>% 
+  arrange(day) %>%
+  mutate(
+    sulfur_dioxide_exposure_window = 
+      zoo::rollapply(sulfur_dioxide,
+                     width = 8, #TO DO: Select number of hours to include
+                     FUN = mean, #function is mean
+                     na.rm = T, #avoids NA
+                     partial = T, #skips unnecessary datapoints
+                     align = "right")) %>%
+  ungroup %>%
+  arrange(id, day)
 ```
 
 ```{r load paco data, warning=F, message=F, echo=F}
@@ -141,7 +184,7 @@ paco <- paco %>%
   arrange(t)
 
 # Remove incorrect values
-paco$SPO2[paco$SPO2 == 0 | paco$SPO2 > 100 | paco$SPO2 < 80] <- NA
+paco$SPO2[paco$SPO2 > 100 | paco$SPO2 < 80] <- NA
 # Make hourly dataframe
 paco_hourly <- paco %>%
   # Select the person, day and hour of interest
@@ -161,6 +204,7 @@ paco_hourly <- paco %>%
   # Arrange the columns by person
   arrange(id)
 
+# Remove original dataframe
 rm(paco)
 ```
 
@@ -172,6 +216,7 @@ fb_sleep <- read_csv("../refinery_data/fitbit_sleep_data.csv")
 
 # Merge daily fitbit data
 fb_daily <- inner_join(fb_body, fb_activities, fb_sleep, by = "t")
+# Remove old data
 rm(fb_body, fb_activities, fb_sleep)
 
 # Load intraday activity
@@ -196,7 +241,7 @@ fb_intra <- bind_rows(fb_intraday_m3, fb_intraday_m5, .id = NULL) %>%
   bind_rows(fb_intraday_m16, .id = NULL) %>%
   mutate(id = as.factor(id))
 
-# Remove intermediate columns
+# Remove intermediate dataframes
 rm(fb_intraday_m3, fb_intraday_m5, fb_intraday_m7,
    fb_intraday_m9, fb_intraday_m11, fb_intraday_m16)
 
@@ -223,77 +268,106 @@ fb_intraday <- fb_intra %>%
       id == "m9" | id == "m10" | id == "m11" |
       id == "m16") %>%
   # Arrange the columns by day
-  arrange(id, day)
+  arrange(id, day) 
 
 # Remove original dataframes
 rm(fb_intra, fb_daily)
 ```
 
 ```{r make individual data, message=F, warning=F, echo=F}
+# Collect participant home addresses
+m3_home = as.numeric(
+  geocode("460 3rd St, Richmond, CA 94801",
+          source="google"))
+m5_home = as.numeric(
+  geocode("2515 Downer Ave, Richmond, CA 94804",
+          source="google"))
+m7_home = as.numeric(
+  geocode("2640 Esmond Ave, Richmond, CA 94804",
+          source="google"))
+m9_home = as.numeric(
+  geocode("1612 Mission Ave, San Pablo, CA 94806",
+          source="google"))
+m10_home = as.numeric(
+  geocode("1832 4th St, Richmond, CA 94801",
+          source="google"))
+m11_home = as.numeric(
+  geocode("2836 18th St, San Pablo, CA 94806",
+          source="google"))
+m16_home = as.numeric(
+  geocode("5733 Oakmont Dr, Richmond, CA 94806",
+          source="google"))
+
 # Make demographics dataframe
+# Will load in later
 demographics <- data_frame(
   id =  c("m3","m5","m7","m9","m10","m11","m16"),
   age = c(21,34,45,33,56,67,51),
-  sex = as.factor(c("male","female","male","female","female","male","female")))
+  home_lat = c(m3_home[2], m5_home[2], m7_home[2], 
+          m9_home[2], m10_home[2], m11_home[2], m16_home[2]),
+  home_long = c(m3_home[1], m5_home[1], m7_home[1], 
+           m9_home[1], m10_home[1], m11_home[1], m16_home[1]),
+  sex = as.factor(c("male","female","male","female","female","male","female"))) %>%
+  mutate(
+    home_dist_to_refinery = distm(cbind(home_long, home_lat), 
+                                  refinery, 
+                                  fun= distHaversine))
 
-# Merge with fb_intraday
+# LongLat randomizer
+# Will have real GPS data loaded 
+set.seed(0)
+long_possible = (-12243009:-12153414)/100000
+lat_possible = (3771863:3809988)/100000
+longitude = sample(long_possible,24427, replace = T)
+latitude = sample(lat_possible,24427, replace = T)
+
+# Merge demographics with fitbit and paco datasets
 fb_data <- left_join(fb_intraday, demographics, by = "id") %>%
   ungroup %>%
-  mutate(
-    id = as.factor(id)
-  )
+  mutate(id = as.factor(id))
 paco_data <- full_join(paco_hourly, demographics, by = "id") %>%
   ungroup %>%
-  mutate(
-    id = as.factor(id)
-    )
+  mutate(id = as.factor(id))
 
-# Individual data
+# Combine all individual data
 individual_data <- fb_data %>%
   bind_rows(paco_data, .id = NULL) %>%
-  filter((heart_rate > 30 & heart_rate < 200) | is.na(heart_rate))
-
-# Remove unnecessary dataframes
-rm(paco_hourly, fb_intraday)
-```
-
-```{r create air quality dataset, message=F, warning=F, echo=F}
-# Air Quality data
-air_quality <- full_join(full_time, air_qual_4901, by = "day") %>%
-  full_join(air_qual_4902, 
-            by = c("day", "id", "sulfur_dioxide",
-                   "carbon_monoxide", "ozone")) %>%
-  select(day, id, everything()) %>%
-  mutate(id = as.factor(id)) %>%
-  arrange(day)
-```
-
-```{r moving window, message=F, warning=F, echo=F}
-# Set hours of interest
-hours = 8
-# Moving window average of sulfur dioxide
-air_quality <- 
-  air_quality %>% 
-  group_by(id) %>% 
-  arrange(day) %>%
+  filter((heart_rate > 30 & heart_rate < 200) | is.na(heart_rate)) %>%
   mutate(
-    sulfur_dioxide_exposure_window = 
-      zoo::rollapply(sulfur_dioxide,
-                     width = hours, #how many data to include
-                     FUN = mean, #function is mean
-                     na.rm = T, #avoids NA
-                     partial = T, #skips unnecessary datapoints
-                     align = "right")) %>%
-  ungroup %>%
-  arrange(id, day)
+    longitude = sample(longitude, replace = T),
+    latitude = sample(latitude, replace = T))
+
+# Remove old dataframes
+rm(paco_hourly, fb_intraday, paco_data, fb_data)
 ```
 
 ```{r TO DO filter your data, message=F, warning=F, echo=F}
+# Merged dataframe 
 total_df <- individual_data %>%
-  filter(sex == "male" & age > 50) %>%
+  #filter(sex == "male" & age > 50) %>% # TO DO: select demographic filters
   bind_rows(air_quality, .id = NULL) %>%
-  mutate(id = as.factor(id)) # Select demographic filters
+  mutate(id = as.factor(id))
 
+# Intermediate dataframe 
+binding_df <- total_df %>%
+  select(-c(methane, sulfur_dioxide))
+
+# To be used in spatial analysis
+spatial_df <- total_df %>%
+  group_by(day) %>%
+  summarize(
+    methane = mean(methane, na.rm=T),
+    sulfur_dioxide = mean(sulfur_dioxide_exposure_window, na.rm=T)
+  ) %>%
+  ungroup %>%
+  right_join(binding_df, by = "day") %>%
+  filter(!is.na(id)) %>%
+  arrange(day)
+
+# Remove intermediate dataframe
+rm(binding_df)
+
+# Create data_frame for standard analysis
 summary_df <- total_df %>%
   group_by(day) %>%
   summarize(
@@ -305,16 +379,13 @@ summary_df <- total_df %>%
     blood_oxygen = mean(blood_oxygen, na.rm=T)
     ) %>%
   ungroup
-
-# Make sure to write your note!
-filter_statement <- paste0("NOTE: This analysis looks at men over 50.")
-cat(filter_statement)
 ```
 
-```{r plot theme, warning=F, message=F, echo=F}
-# http://zevross.com/blog/2014/08/04/beautiful-plotting-in-r-a-ggplot2-cheatsheet-3/#add-text-annotation-in-the-top-right-top-left-etc.-annotation_custom-and-friends
+## Filters
+This analysis looks at 
 
-# Create ggplot theme
+```{r plot theme, warning=F, message=F, echo=F}
+# Create plotting theme
 theme_fair_tech <- theme(
   legend.position = "bottom",
   panel.background = element_rect(fill = NA),
@@ -328,21 +399,17 @@ theme_fair_tech <- theme(
   )
 ```
 
-# Notes on Data Sources
-Methane and sulfur dioxide readings collected in real-time by [Fenceline.org](fenceline.org)
-
-Heart rate collected with Fitbit health monitors
-
-Blood Oxygen levels recorded with a pulse oximeter^[[Pulse Oximetry wiki](https://en.wikipedia.org/wiki/Pulse_oximetry)]
-
 # Correlations
 
 ## Plots^[For help on interpreting a correlation plot, visit this [page](https://www.mathsisfun.com/data/images/correlation-examples.svg)]
 
 t-tests for Statistical Significance^[Welch two-sample t-test]
 
-These tests compare the difference between the population mean health outcome (e.g. heart rate) and the mean health outcome when the environmental input (e.g. methane) is above its median value.
-```{r plots, warning=F, message=F, echo=F}
+These tests compare the difference between the population mean health outcome (e.g. heart rate) and the mean health outcome when the environmental input (e.g. methane) is above its median value. Actually does not do this anymore.
+
++ To do: should make this analysis (maybe also) look at when pollutant is above permitted limit or if it is present at all.
+
+```{r make plot function, warning=F, message=F, echo=F}
 my_plot <- function(df = summary_df,
                     health_var,
                     health_var_name,
@@ -350,6 +417,7 @@ my_plot <- function(df = summary_df,
                     pollutant_var,
                     pollutant_var_name, 
                     pollutant_var_units){
+  
   health_var <- enquo(health_var)
   pollutant_var <- enquo(pollutant_var)
 
@@ -357,7 +425,7 @@ my_plot <- function(df = summary_df,
   df %>%
     filter(!is.na(!!health_var) & !is.na(!!pollutant_var)) %>%
     select(UQ(health_var), UQ(pollutant_var)) %>% 
-    boot::corr() %>%
+    boot::corr() %>% # why not use cor()?
     round(3) -> correlation
 
   # t-test
@@ -367,7 +435,7 @@ my_plot <- function(df = summary_df,
   
   df %>%
     filter(!is.na(!!health_var) & !is.na(!!pollutant_var)) %>%
-    # Not filtering for above meadian anymore
+    # Not filtering for above median anymore
     select(UQ(health_var)) -> sample
 
   # Perhaps should compare to air_quality standards instead of median
@@ -388,13 +456,19 @@ my_plot <- function(df = summary_df,
       scale_x_continuous() +
       scale_y_continuous() +
       theme_fair_tech + 
-      labs(x=paste0(health_var_name," (",health_var_units,")"), 
-           y=paste0(pollutant_var_name," (",pollutant_var_units,")")) +
-      ggtitle(paste0(health_var_name, " & ", pollutant_var_name),
+      labs(x=paste0(health_var_name,
+                    " (",health_var_units,")"), 
+           y=paste0(pollutant_var_name,
+                    " (",pollutant_var_units,")")) +
+      ggtitle(paste0(health_var_name, 
+                     " & ", pollutant_var_name),
               subtitle=paste0("r = ", correlation,
-                              ", p-value = ",round(t_test$p.value,4)))
+                              ", p-value = ",
+                              round(t_test$p.value,4)))
 }
+```
 
+```{r run plots, warning=F, message=F, echo=F}
 # Blood Oxygen and Sulfur Dioxide
 my_plot(health_var = blood_oxygen,
         health_var_name = "Blood Oxygen",
@@ -418,4 +492,133 @@ my_plot(health_var = heart_rate,
         pollutant_var = methane,
         pollutant_var_name = "Methane",
         pollutant_var_units = "ppb")
+```
+
+## Spatial Analysis
+
+### Load shapefiles
+```{r load Contra Costa County shapefile, message=F, warning=F}
+# Loads pre-saved file from website
+# Projection: NAD 1983 StatePlane California III FIPS 0403 Feet
+cc <- readOGR(dsn ="../refinery_data/location/BaseMapGrid", 
+              layer = "GRD_PWD_BaseMap_0106")
+# summary(cc)
+
+# Converts to longlat figure
+cc_wgs84 <- spTransform(cc, 
+                        CRS("+proj=longlat +datum=WGS84"))
+# summary(cc_wgs84)
+# coordinates(cc_wgs84)
+# plot(cc_wgs84)
+
+#plot of contra costa county
+r <- ggplot(cc_wgs84, aes(x=long, y=lat)) + 
+  geom_path(aes(group=group)) + 
+  coord_map("mercator")
+
+# By id
+r + 
+  geom_point(data=spatial_df, 
+             aes(x=longitude, y=latitude, 
+                 color = id), 
+             na.rm = T) + 
+  geom_point(aes(x= refinery[1], y= refinery[2]))
+
+# By heart rate
+r + 
+  geom_point(data=spatial_df, 
+             aes(x=longitude, y=latitude,
+                 color = heart_rate), 
+             na.rm = T) + 
+  geom_point(aes(x= refinery[1], y= refinery[2])) 
+```
+
+### Spatial analysis
+```{r spatial autocorrelation, warning=F, message=F}
+# For binary data, use the join-count index
+
+# First, determine which points are near
+# Select only the spatial points
+points <- spatial_df %>% select(longitude, latitude)
+# Turn that into special dataframe
+spat_points <- SpatialPoints(points,
+                             proj4string = CRS("+proj=longlat +datum=WGS84"))
+# Nearest neighbor assignment
+points_nb <- dnearneigh(spat_points, d1 = 0, d2 = .1)
+# Convert into weights
+spatial_weights <- nb2mat(points_nb, zero.policy = T)
+# Convert into listw
+spatial_listw <- nb2listw(points_nb, zero.policy =T)
+
+# Intermediate dataframe removing LatLong
+spatial_df_t <- spatial_df %>% select(-c(longitude, latitude))
+
+# Make spatial points dataframe with merge
+spatial_points <- SpatialPointsDataFrame(coords = points,
+                            data = spatial_df_t,
+                            proj4string = 
+                              CRS("+proj=longlat +datum=WGS84"),
+                            match.ID = T)
+
+# Moran's I Monte Carlo
+moran.mc(spatial_df$heart_rate, 
+         spatial_listw, 
+         nsim=99,
+         zero.policy = T, 
+         na.action = na.omit)
+```
+
+### Load Cal Enviro Screen
+```{r Cal Enviro Screen, include=F}
+## Load community health assessment data
+ces <- readOGR(dsn ="../refinery_data/location/CES3Results", 
+               layer = "CES3Results")
+# Spatial transform
+ces_lat <- spTransform(ces, CRS("+proj=longlat +datum=WGS84"))
+# Subset for Contra Costa County
+ces_lat_cc <- subset(ces_lat, County == "Contra Costa")
+# View(ces_lat_cc)
+
+# Add a new column "id" from the rownames
+ces_lat_cc@data$id <- rownames(ces_lat_cc@data)
+
+# Create a dataframe from the spatial object
+new_data <- fortify(ces_lat_cc, region = "id")
+
+# Merge the "fortified" data with the spatial object data
+waterDF <- merge(new_data, ces_lat_cc@data, by = "id")
+
+# Map (e.g. the cardiovascular scores)
+ggplot(waterDF, aes(x=long, 
+                    y=lat, 
+                    group = group, 
+                    fill = Cardiovasc)) +
+  geom_polygon()  +
+  geom_path(color = "white") +
+  scale_fill_gradient(
+    low = "plum1", high = "purple4",
+    breaks=c(500000,1000000,1500000),
+    labels=c("Low","Medium","High")) +
+  coord_map("mercator") + 
+  ggtitle("Cardiovascular Health")
+```
+
+### Leaflet
+```{r leaflet, warning=F, message=F, echo=F}
+# Generate dynamic map
+map = leaflet(data = spatial_df) %>% 
+  addTiles()
+
+# Call map
+map %>% addCircleMarkers(
+  lng = ~home_long,
+  lat = ~home_lat,
+  radius = 4,
+  stroke = FALSE,
+  color = "black",
+  fillOpacity = 0.8,
+  popup = paste0("<b>ID: </b>", "<b>",spatial_df$id,"</b>", "<br>",
+                  "Age: ", spatial_df$age, "<br>",
+                  "Sex: ", spatial_df$sex),
+  popupOptions())
 ```
