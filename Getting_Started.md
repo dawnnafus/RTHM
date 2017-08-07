@@ -1,6 +1,10 @@
-## How to use this code - Executive Summary
+---
+title: Getting Started
+---
 
-### R
+# 1. Executive Summary
+
+## R
 First, you need to download [R](https://cran.cnr.berkeley.edu/) and [RStudio] (https://www.rstudio.com/products/RStudio/#Desktop). Both are free. Make sure to download the correct R version for your operating system and the desktop version of RStudio.
 
 The versions used to create the code are listed below. Other versions may or may not work with the code.
@@ -16,19 +20,19 @@ And finally, this is a highly recommended tutorial for getting started with R, h
 
 + http://r4ds.had.co.nz/introduction.html
 
-### Data
+## Data
 You need to collect your data, and make sure it is in the right location to be read by the code. The key datasets are: symptoms reporting (PACO), Fitbit, GPS, and refinery pollution data. The source of these data are listed in the references document.
 
-### Manipulating the code
+## Manipulating the code
 Throughout the code, there are various user inputs and selections. These are marked in the code, but will be noted below in the detailed instructions. For instance, you will be asked to make the timeframe, id's, and exposure windows relevant for your project.
 Image.
 
-### To print a report
+## To print a report
 Results will appear in-line (i.e. within RStudio), however if you want to print a report and share it as a PDF, click `Knit` in the icon bar right above the code window. This will generate a PDF which you can save to your desktop.
 Image.
 
-## Detailed instructions
-### If you haven't used R before
+# 2. Detailed Instructions
+## If you haven't used R before
 
 **First**, download R at this [webpage](https://cran.cnr.berkeley.edu/).![R download page](images/R_download_page.png)
 
@@ -38,7 +42,7 @@ Create two side-by-side folders. One is titled: "refinery-data" while the other 
 
 Download the analysis file (refinery-analysis.rmd) from github [https://github.com/niklaslollo/refinery-stats/](https://github.com/niklaslollo/refinery-stats/), put it in "refinery-stats." Double-click on the file and RStudio should open. 
 
-### Once you've installed and set-up R
+## Once you've installed and set-up R
 
 Acquire the needed datasets:
 
@@ -54,7 +58,7 @@ Acquire the needed datasets:
   
 Put these datasets side-by-side in the "refinery-data" folder.
 
-### Data management
+## Data management
 Here is how each dataset should look. Please make sure you follow this exactly.
 
 + Paco. Image.
