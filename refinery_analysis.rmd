@@ -19,19 +19,20 @@ lapply(required_pkg, library, character.only = TRUE)
 
 ```{r time dataset, message=F, warning=F, echo=F}
 # Inputs here are date_begin and date_end
-date_begin = "2016-05-09 14:00"
-date_end = "2016-08-11 0:00"
-exp_begin = as.POSIXct(date_begin, tz="GMT", format="%Y-%m-%d %H")
-exp_end = as.POSIXct(date_end, tz="GMT", format="%Y-%m-%d %H")
+begin = "2016-05-09 14:00"
+end = "2016-08-11 0:00"
 
-timeframe <- function(date_begin = date_begin, 
-                      date_end = date_end){
+timeframe <- function(date_begin = begin, 
+                      date_end = end){
   exp_begin = as.POSIXct(date_begin, tz="GMT", format="%Y-%m-%d %H")
   exp_end = as.POSIXct(date_end, tz="GMT", format="%Y-%m-%d %H")
   out = data_frame(day = seq(exp_begin, exp_end, by = 3600))
   return(out)
 }
 full_time <- timeframe()
+
+exp_begin = as.POSIXct(begin, tz="GMT", format="%Y-%m-%d %H")
+exp_end = as.POSIXct(end, tz="GMT", format="%Y-%m-%d %H")
 ```
 
 ```{r load air quality data, warning=F, message=F, echo=F}
@@ -193,11 +194,19 @@ paco_hourly <- paco %>%
     # Creates new variables
     day = as.POSIXct(cut(t, breaks='hour'))) %>%
   # Average
-  summarise(blood_oxygen = mean(SPO2, na.rm=T)) %>%
+  summarise(
+    blood_oxygen = mean(SPO2, na.rm=T),
+    symptoms = first(Symptoms),
+    doctor = first(doctor),
+    medicine = first(medicine),
+    text_entry = first(`Participant choice`)
+    ) %>%
   filter(is.na(blood_oxygen) == F) %>% 
-  complete(expand(nesting(id), day = seq(exp_begin, exp_end, by = 3600)),  
+  complete(nesting(id), 
+           day = seq(exp_begin, exp_end, by = 3600),  
            #completing all levels of id:day
-              fill = list(blood_oxygen = NA)) %>%
+           fill = list(blood_oxygen = NA)) %>%
+  ungroup %>%
   # Select persons of interest 
   filter(id == "m3" | id == "m5" | id == "m7" |
       id == "m9" | id == "m10" | id == "m11" |
@@ -259,11 +268,12 @@ fb_intraday <- fb_intra %>%
     heart_rate = mean(heart, na.rm=T),
     floors = sum(floors, na.rm=T),
     elevation = sum(elevation, na.rm=T)) %>%
-    complete(expand(nesting(id), day = seq(exp_begin, exp_end, by = 3600)),  
-         #completing all levels of id:day
-              fill = list(calories = NA,distance = NA,
-                          steps = NA, heart_rate = NA,
-                          floors = NA, elevation = NA)) %>%
+    complete(nesting(id),
+             day = seq(exp_begin, exp_end, by = 3600),
+             #completing all levels of id:day
+             fill = list(calories = NA,distance = NA,
+                         steps = NA, heart_rate = NA,
+                         floors = NA, elevation = NA)) %>%
   # Select persons of interest 
   filter(id == "m3" | id == "m5" | id == "m7" |
       id == "m9" | id == "m10" | id == "m11" |
@@ -319,8 +329,8 @@ demographics <- data_frame(
 set.seed(0)
 long_possible = (-12243009:-12153414)/100000
 lat_possible = (3771863:3809988)/100000
-longitude = sample(long_possible,24427, replace = T)
-latitude = sample(lat_possible,24427, replace = T)
+longitude = sample(long_possible,24414, replace = T)
+latitude = sample(lat_possible,24414, replace = T)
 
 # Merge demographics with fitbit and paco datasets
 fb_data <- left_join(fb_intraday, demographics, by = "id") %>%
@@ -495,9 +505,9 @@ my_plot(health_var = heart_rate,
         pollutant_var_units = "ppb")
 ```
 
-## Spatial Analysis
+# Spatial Analysis
 
-### Load shapefiles
+## Load shapefiles
 ```{r load Contra Costa County shapefile, message=F, warning=F}
 # Loads pre-saved file from website
 # Projection: NAD 1983 StatePlane California III FIPS 0403 Feet
@@ -534,7 +544,7 @@ r +
   geom_point(aes(x= refinery[1], y= refinery[2])) 
 ```
 
-### Spatial analysis
+## Autocorrelation
 ```{r spatial autocorrelation, warning=F, message=F}
 # For binary data, use the join-count index
 
