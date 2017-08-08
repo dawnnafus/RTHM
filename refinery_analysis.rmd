@@ -590,7 +590,7 @@ ces_lat <- spTransform(ces, CRS("+proj=longlat +datum=WGS84"))
 
 # Subset for Contra Costa County
 ces_lat_cc <- subset(ces_lat, County == "Contra Costa")
-head(ces_lat_cc) # Examine the data of interest
+head(ces_lat_cc@data) # Examine the data of interest
 
 # Add a new column "id" from the rownames
 ces_lat_cc@data$id <- rownames(ces_lat_cc@data)
