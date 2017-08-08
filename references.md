@@ -10,6 +10,10 @@ title: Sources, References and Notes
 
 All data is aggregated or summarized by the hour. 
 
+[Contra Costa County Map](https://www.dropbox.com/sh/s0yu349w6upas0t/AAAN0syik9l1FqlPNZOMgAh3a?dl=0)
+
+[Cal Enviro Screen Data](https://oehha.ca.gov/calenviroscreen/report/calenviroscreen-30#downloads)
+
 ## References
 
 ### R
@@ -34,7 +38,20 @@ All data is aggregated or summarized by the hour.
 
 ## Notes
 
-Some background on Bay Area refineries and Environmental Justice:
+### Correlation
+
+### Spatial Analysis
+
+**Contra Costa County map**:    
+*Projection*: NAD 1983 StatePlane California III FIPS 0403 Feet
+
+**Spatial Autocorrelation**
+
+For binary data, use the join-count index  
+
+[Intrepretation of results](http://help.arcgis.com/en/arcgisdesktop/10.0/help/index.html#//005p0000000t000000)
+
+### Background on Bay Area refineries and Environmental Justice:
 
 + [U Michigan study](http://www.umich.edu/~snre492/sherman.html)
 
