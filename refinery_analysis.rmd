@@ -507,57 +507,54 @@ my_plot(health_var = heart_rate,
 
 # Spatial Analysis
 
-## Load shapefiles
-```{r load Contra Costa County shapefile, message=F, warning=F}
-# Loads pre-saved file from website
-# Projection: NAD 1983 StatePlane California III FIPS 0403 Feet
+## Plot points
+```{r plot spatial points, echo=F, message=F, warning=F}
+# Load contra costa county shapefile
 cc <- readOGR(dsn ="../refinery_data/location/BaseMapGrid", 
               layer = "GRD_PWD_BaseMap_0106")
-# summary(cc)
 
-# Converts to longlat figure
+# Convert to longlat data
 cc_wgs84 <- spTransform(cc, 
                         CRS("+proj=longlat +datum=WGS84"))
-# summary(cc_wgs84)
-# coordinates(cc_wgs84)
-# plot(cc_wgs84)
 
-#plot of contra costa county
+
+# Basic plot of contra costa county
 r <- ggplot(cc_wgs84, aes(x=long, y=lat)) + 
   geom_path(aes(group=group)) + 
-  coord_map("mercator")
+  coord_map("mercator") + 
+  geom_point(aes(x= refinery[1], y= refinery[2])) 
 
-# By id
+# Plot ids on contra costa county map
 r + 
   geom_point(data=spatial_df, 
              aes(x=longitude, y=latitude, 
                  color = id), 
-             na.rm = T) + 
-  geom_point(aes(x= refinery[1], y= refinery[2]))
+             na.rm = T) 
 
-# By heart rate
+# Plot heart rate over space
 r + 
   geom_point(data=spatial_df, 
              aes(x=longitude, y=latitude,
                  color = heart_rate), 
-             na.rm = T) + 
-  geom_point(aes(x= refinery[1], y= refinery[2])) 
+             na.rm = T)
 ```
 
 ## Autocorrelation
-```{r spatial autocorrelation, warning=F, message=F}
-# For binary data, use the join-count index
-
-# First, determine which points are near
+```{r spatial autocorrelation, echo=F, warning=F, message=F}
+### Dtermine which points are near
 # Select only the spatial points
 points <- spatial_df %>% select(longitude, latitude)
-# Turn that into special dataframe
+
+# Turn into spatial dataframe
 spat_points <- SpatialPoints(points,
                              proj4string = CRS("+proj=longlat +datum=WGS84"))
+
 # Nearest neighbor assignment
 points_nb <- dnearneigh(spat_points, d1 = 0, d2 = .1)
+
 # Convert into weights
 spatial_weights <- nb2mat(points_nb, zero.policy = T)
+
 # Convert into listw
 spatial_listw <- nb2listw(points_nb, zero.policy =T)
 
@@ -572,23 +569,28 @@ spatial_points <- SpatialPointsDataFrame(coords = points,
                             match.ID = T)
 
 # Moran's I Monte Carlo
-moran.mc(spatial_df$heart_rate, 
-         spatial_listw, 
-         nsim=99,
-         zero.policy = T, 
-         na.action = na.omit)
+moran_out <- moran.mc(spatial_df$heart_rate,
+                      spatial_listw,
+                      nsim=99,
+                      zero.policy = T,
+                      na.action = na.omit)
+
+paste0("Moran's I p-value: ", moran_out$p.value)
+paste0("Moran's I z-score: ", moran_out$statistic)
 ```
 
-### Load Cal Enviro Screen
-```{r Cal Enviro Screen, include=F}
+## Load Cal Enviro Screen
+```{r Cal Enviro Screen, warning=F, echo=F, message=F}
 ## Load community health assessment data
 ces <- readOGR(dsn ="../refinery_data/location/CES3Results", 
                layer = "CES3Results")
+
 # Spatial transform
 ces_lat <- spTransform(ces, CRS("+proj=longlat +datum=WGS84"))
+
 # Subset for Contra Costa County
 ces_lat_cc <- subset(ces_lat, County == "Contra Costa")
-# View(ces_lat_cc)
+head(ces_lat_cc) # Examine the data of interest
 
 # Add a new column "id" from the rownames
 ces_lat_cc@data$id <- rownames(ces_lat_cc@data)
@@ -614,7 +616,7 @@ ggplot(waterDF, aes(x=long,
   ggtitle("Cardiovascular Health")
 ```
 
-### Leaflet
+## Leaflet
 ```{r leaflet, warning=F, message=F, echo=F}
 # Generate dynamic map
 map = leaflet(data = spatial_df) %>% 
