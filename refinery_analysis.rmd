@@ -54,7 +54,9 @@ hourly_4902 <- feed_4902 %>%
     # Averages
     sulfur_dioxide = mean(sulfurDioxide, na.rm=T),
     carbon_monoxide = mean(carbonMonoxide, na.rm=T),
-    ozone = mean(ozone, na.rm=T)) %>%
+    ozone = mean(ozone, na.rm=T),
+    pm_2.5 = mean(pm2_5, na.rm=T)
+    ) %>%
   ungroup() %>%
   # Arrange the columns by day
   arrange(day) %>%
@@ -70,7 +72,9 @@ hourly_4902_methane <- feed_4902_methane %>%
     # Averages
     methane = mean(Methane, na.rm=T),
     benzene = mean(Benzene, na.rm=T),
-    nitrous_oxide = mean(`Nitrous Oxide`, na.rm=T)) %>%
+    nitrous_oxide = mean(`Nitrous Oxide`, na.rm=T),
+    xylene = mean(Xylene, na.rm=T)
+    ) %>%
   # Arrange the columns by day
   arrange(day) %>%
   full_join(full_time, by = "day")
@@ -90,10 +94,12 @@ air_qual_4901 <- feed_4901 %>%
   summarise(
     sulfur_dioxide = mean(sulfurDioxide, na.rm=T),
     carbon_monoxide = mean(carbonMonoxide, na.rm=T),
-    ozone = mean(ozone, na.rm=T)) %>%
+    ozone = mean(ozone, na.rm=T),
+    pm_2.5 = mean(pm2_5, na.rm=T)
+    ) %>%
   mutate(
     id = "feed_4901"
-  ) %>%
+    ) %>%
   # Arrange the columns by day
   arrange(day) %>%
   full_join(full_time, by = "day")
@@ -109,7 +115,7 @@ rm(feed_4901, feed_4902, feed_4902_methane)
 air_quality <- full_join(full_time, air_qual_4901, by = "day") %>%
   full_join(air_qual_4902, 
             by = c("day", "id", "sulfur_dioxide",
-                   "carbon_monoxide", "ozone")) %>%
+                   "carbon_monoxide", "ozone", "pm_2.5")) %>%
   select(day, id, everything()) %>%
   mutate(id = as.factor(id)) %>%
   arrange(day)
@@ -144,7 +150,6 @@ air_quality <-
                      align = "right")) %>%
   ungroup %>%
   arrange(id, day)
-
 ```
 
 ```{r load paco data, warning=F, message=F, echo=F}
@@ -185,8 +190,9 @@ paco <- paco %>%
       id == "m16") %>%
   arrange(t)
 
-# Remove incorrect values
+# Remove unlikely values
 paco$SPO2[paco$SPO2 > 100 | paco$SPO2 < 80] <- NA
+
 # Make hourly dataframe
 paco_hourly <- paco %>%
   # Select the person, day and hour of interest
@@ -219,16 +225,6 @@ rm(paco)
 ```
 
 ```{r load fitbit data, message=F, warning=F, echo=F}
-# Load fitbit data
-fb_body <- read_csv("../refinery_data/fitbit_body_data.csv")
-fb_activities <- read_csv("../refinery_data/fitbit_activities_data.csv")
-fb_sleep <- read_csv("../refinery_data/fitbit_sleep_data.csv")
-
-# Merge daily fitbit data
-fb_daily <- inner_join(fb_body, fb_activities, fb_sleep, by = "t")
-# Remove old data
-rm(fb_body, fb_activities, fb_sleep)
-
 # Load intraday activity
 fb_intraday_m3 <- read_csv("../refinery_data/fitbit_intradayactivities_m3.csv") %>%
   mutate(id = "m3")
@@ -282,7 +278,7 @@ fb_intraday <- fb_intra %>%
   arrange(id, day) 
 
 # Remove original dataframes
-rm(fb_intra, fb_daily)
+rm(fb_intra)
 ```
 
 ```{r make individual data, message=F, warning=F, echo=F}
@@ -314,10 +310,11 @@ m16_home = as.numeric(
 demographics <- data_frame(
   id =  c("m3","m5","m7","m9","m10","m11","m16"),
   age = c(21,34,45,33,56,67,51),
-  home_lat = c(m3_home[2], m5_home[2], m7_home[2], 
-          m9_home[2], m10_home[2], m11_home[2], m16_home[2]),
-  home_long = c(m3_home[1], m5_home[1], m7_home[1], 
-           m9_home[1], m10_home[1], m11_home[1], m16_home[1]),
+  time_in_area = c(20,16,5,10,50,32,27),
+  home_lat = c(m3_home[2], m5_home[2], m7_home[2],
+               m9_home[2], m10_home[2], m11_home[2], m16_home[2]),
+  home_long = c(m3_home[1], m5_home[1], m7_home[1],
+                m9_home[1], m10_home[1], m11_home[1], m16_home[1]),
   sex = as.factor(c("male","female","male","female","female","male","female"))) %>%
   mutate(
     home_dist_to_refinery = distm(cbind(home_long, home_lat), 
@@ -359,16 +356,26 @@ total_df <- individual_data %>%
   bind_rows(air_quality, .id = NULL) %>%
   mutate(id = as.factor(id))
 
-# Intermediate dataframe 
+# Intermediate dataframe - remove pollution variables
 binding_df <- total_df %>%
-  select(-c(methane, sulfur_dioxide))
+  select(-c(methane, sulfur_dioxide, ozone,
+            benzene, pm_2.5, carbon_monoxide,
+            sulfur_dioxide_exposure_window, xylene,
+            nitrous_oxide))
 
 # To be used in spatial analysis
 spatial_df <- total_df %>%
   group_by(day) %>%
   summarize(
     methane = mean(methane, na.rm=T),
-    sulfur_dioxide = mean(sulfur_dioxide_exposure_window, na.rm=T)
+    sulfur_dioxide = mean(sulfur_dioxide_exposure_window, na.rm=T),
+    ozone = mean(ozone, na.rm=T),
+    benzene = mean(benzene, na.rm=T),
+    pm_2.5 = mean(pm_2.5, na.rm=T),
+    carbon_monoxide = mean(carbon_monoxide, na.rm=T),
+    so2_not_window = mean(sulfur_dioxide, na.rm=T),
+    xylene = mean(xylene, na.rm=T),
+    nitrous_oxide = mean(nitrous_oxide, na.rm=T)
   ) %>%
   ungroup %>%
   right_join(binding_df, by = "day") %>%
@@ -385,9 +392,22 @@ summary_df <- total_df %>%
     # Pollutants
     methane = mean(methane, na.rm=T),
     sulfur_dioxide = mean(sulfur_dioxide_exposure_window, na.rm=T),
+    ozone = mean(ozone, na.rm=T),
+    benzene = mean(benzene, na.rm=T),
+    pm_2.5 = mean(pm_2.5, na.rm=T),
+    carbon_monoxide = mean(carbon_monoxide, na.rm=T),
+    so2_not_window = mean(sulfur_dioxide, na.rm=T),
+    xylene = mean(xylene, na.rm=T),
+    nitrous_oxide = mean(nitrous_oxide, na.rm=T),
     # Health indicators
     heart_rate = mean(heart_rate, na.rm=T),
-    blood_oxygen = mean(blood_oxygen, na.rm=T)
+    blood_oxygen = mean(blood_oxygen, na.rm=T),
+    # Summary demographics
+    time_in_area = mean(time_in_area, na.rm=T),
+    age = mean(age, na.rm=T),
+    home_dist_to_refinery = mean(home_dist_to_refinery, na.rm=T),
+    symptoms = mean(symptoms, na.rm=T),
+    text_entry = first(text_entry)
     ) %>%
   ungroup
 ```
@@ -631,6 +651,7 @@ map %>% addCircleMarkers(
   fillOpacity = 0.8,
   popup = paste0("<b>ID: </b>", "<b>",spatial_df$id,"</b>", "<br>",
                   "Age: ", spatial_df$age, "<br>",
-                  "Sex: ", spatial_df$sex),
+                  "Sex: ", spatial_df$sex, "<br>",
+                 "Time in area: ", spatial_df$time_in_area),
   popupOptions())
 ```
