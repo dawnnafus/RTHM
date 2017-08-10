@@ -431,99 +431,23 @@ theme_fair_tech <- theme(
   )
 ```
 
-# Correlations
+## Leaflet
+```{r leaflet, warning=F, message=F, echo=F}
+# Generate dynamic map
+map = leaflet(data = spatial_df) %>% 
+  addTiles()
 
-## Plots^[For help on interpreting a correlation plot, visit this [page](https://www.mathsisfun.com/data/images/correlation-examples.svg)]
-
-t-tests for Statistical Significance^[Welch two-sample t-test]
-
-These tests compare the difference between the population mean health outcome (e.g. heart rate) and the mean health outcome when the environmental input (e.g. methane) is above its median value. Actually does not do this anymore.
-
-+ To do: should make this analysis (maybe also) look at when pollutant is above permitted limit or if it is present at all.
-
-```{r make plot function, warning=F, message=F, echo=F}
-my_plot <- function(df = summary_df,
-                    health_var,
-                    health_var_name,
-                    health_var_units,
-                    pollutant_var,
-                    pollutant_var_name, 
-                    pollutant_var_units){
-  
-  health_var <- enquo(health_var)
-  pollutant_var <- enquo(pollutant_var)
-
-  # Correlation
-  df %>%
-    filter(!is.na(!!health_var) & !is.na(!!pollutant_var)) %>%
-    select(UQ(health_var), UQ(pollutant_var)) %>% 
-    boot::corr() %>% # why not use cor()?
-    round(3) -> correlation
-
-  # t-test
-  df %>% 
-    filter(!is.na(!!health_var)) %>%
-    transmute(health = !!health_var) -> health
-  
-  df %>%
-    filter(!is.na(!!health_var) & !is.na(!!pollutant_var)) %>%
-    # Not filtering for above median anymore
-    select(UQ(health_var)) -> sample
-
-  # Perhaps should compare to air_quality standards instead of median
-  t_test <- t.test(x = sample[[1]], y = health[[1]])
-
-  df %>%
-    filter(!is.na(!!health_var) & !is.na(!!pollutant_var)) %>%
-    transmute(
-      health = !!health_var,
-      pollutant = !!pollutant_var) -> df_new
-
-    # Plot
-  df_new %>%
-    ggplot() + 
-      geom_point(aes(x= health, y= pollutant)) +
-      geom_smooth(aes(x= health, y= pollutant), 
-                  method = "lm", se=F) +
-      scale_x_continuous() +
-      scale_y_continuous() +
-      theme_fair_tech + 
-      labs(x=paste0(health_var_name,
-                    " (",health_var_units,")"), 
-           y=paste0(pollutant_var_name,
-                    " (",pollutant_var_units,")")) +
-      ggtitle(paste0(health_var_name, 
-                     " & ", pollutant_var_name),
-              subtitle=paste0("r = ", correlation,
-                              ", p-value = ",
-                              round(t_test$p.value,4)))
-}
-```
-
-```{r run plots, warning=F, message=F, echo=F}
-# Blood Oxygen and Sulfur Dioxide
-my_plot(health_var = blood_oxygen,
-        health_var_name = "Blood Oxygen",
-        health_var_units = "%",
-        pollutant_var = sulfur_dioxide,
-        pollutant_var_name = "Sulfur Dioxide",
-        pollutant_var_units = "ppb")
-
-# Heart Rate and Sulfur Dioxide
-my_plot(health_var = heart_rate,
-        health_var_name = "Heart Rate",
-        health_var_units = "bpm",
-        pollutant_var = sulfur_dioxide,
-        pollutant_var_name = "Sulfur Dioxide",
-        pollutant_var_units = "ppb")
-
-# Heart Rate and Methane
-my_plot(health_var = heart_rate,
-        health_var_name = "Heart Rate",
-        health_var_units = "bpm",
-        pollutant_var = methane,
-        pollutant_var_name = "Methane",
-        pollutant_var_units = "ppb")
+# Call map
+map %>% addCircleMarkers(
+  lng = ~home_long,
+  lat = ~home_lat,
+  radius = 4,
+  stroke = FALSE,
+  fillOpacity = 1,
+  popup = paste0("<b>ID: </b>", "<b>",spatial_df$id,"</b>", "<br>",
+                  "Age: ", spatial_df$age, "<br>",
+                  "Sex: ", spatial_df$sex, "<br>",
+                 "Time in area: ", spatial_df$time_in_area, " years"))
 ```
 
 ```{r shiny, echo=F, message=F, warning=F}
@@ -619,10 +543,10 @@ server <- function(input, output) {
   output$plot1 <- renderPlot({
     new_data <- datadata()
     
-    new_data %>%
-      select(matches(input$health_var), matches(input$pollutant_var)) %>% 
-      boot::corr() %>%
-      round(3) -> correlation
+    #new_data %>%
+    #  select(matches(input$health_var), matches(input$pollutant_var)) %>% 
+    #  boot::corr() %>%
+    #  round(3) -> correlation
 
     ggplot(new_data) +
       geom_point(aes_string(x = input$pollutant_var, y = input$health_var))+
@@ -630,8 +554,8 @@ server <- function(input, output) {
       scale_y_continuous() + 
       theme_fair_tech + 
       geom_smooth(aes_string(x= input$pollutant_var, y= input$health_var), 
-                  method = "lm", se=F) + 
-      ggtitle(paste0("r = ",correlation))
+                  method = "lm", se=F) 
+      #ggtitle(paste0("r = ",correlation))
   })
   
 }
