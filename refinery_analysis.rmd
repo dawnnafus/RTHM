@@ -651,6 +651,7 @@ map %>% addCircleMarkers(
   fillOpacity = 0.8,
   popup = paste0("<b>ID: </b>", "<b>",spatial_df$id,"</b>", "<br>",
                   "Age: ", spatial_df$age, "<br>",
-                  "Sex: ", spatial_df$sex),
+                  "Sex: ", spatial_df$sex, "<br>",
+                 "Time in area: ", spatial_df$time_in_area),
   popupOptions())
 ```
