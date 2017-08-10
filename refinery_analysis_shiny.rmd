@@ -475,6 +475,7 @@ library(rsconnect)
 library(shinydashboard)
 library(shiny)
 library(leaflet)
+library(tidyverse)
 ui <- dashboardPage(
   
   dashboardHeader(
@@ -484,7 +485,7 @@ ui <- dashboardPage(
   dashboardSidebar(
     sidebarMenu(
       menuItem("Correlation Plot", tabName = "Correlation", icon = icon("dashboard")),
-      menuItem("Dynamic Map", tabname = "Leafer", icon = icon("map-o")),
+      menuItem("Dynamic Map", tabName = "Leafer", icon = icon("map-o")),
       menuItem("Spatial Plot", tabName = "Spatial", icon = icon("map"),
                badgeLabel = "new")
       )
@@ -508,7 +509,7 @@ ui <- dashboardPage(
                   sliderInput(
                     inputId = "time_in_area",
                     label = "Time in Area", min= 0 , max = 100,
-                    value = c(20,50),
+                    value = c(5,50),
                     step = 5),
                   checkboxGroupInput(
                     inputId = "gender",
@@ -525,41 +526,41 @@ ui <- dashboardPage(
       fluidRow(
         box(plotOutput('plot_spatial', height = 250)),
         box(h3('Selections'),
-      sliderInput(inputId = "age_range",
-              label = "Age Range", min= 0 , max = 100,
-              value = c(20,80),
-              step = 5),
-      sliderInput(inputId = "time_in_area",
-              label = "Time in Area", min= 0 , max = 100,
-              value = c(20,50),
-              step = 5),
-      checkboxGroupInput(
-        inputId = "gender",
-        label= "Gender",
-        choices = c("male" = "male","female"= "female"),
-        selected = c("male", "female")),
-      uiOutput('spatialSelect')
+            #sliderInput(inputId = "age_range",
+            #  label = "Age Range", min= 0 , max = 100,
+            #  value = c(20,80),
+            #  step = 5),
+            #sliderInput(inputId = "time_in_area",
+            #  label = "Time in Area", min= 0 , max = 100,
+            #  value = c(20,50),
+            #  step = 5),
+            #checkboxGroupInput(
+            #  inputId = "gender",
+            #  label= "Gender",
+            #  choices = c("male" = "male","female"= "female"),
+            #  selected = c("male", "female")),
+            uiOutput('spatialSelect')
       ))),
       tabItem(
         tabName = "Leafer",
       fluidRow(
         box(width = NULL,
             leafletOutput(
-              "plotLeaf", width = "75%", height = "500px")),
-        box(h3('Selections'),
-      sliderInput(inputId = "age_range",
-              label = "Age Range", min= 0 , max = 100,
-              value = c(20,80),
-              step = 5),
-      sliderInput(inputId = "time_in_area",
-              label = "Time in Area", min= 0 , max = 100,
-              value = c(20,50),
-              step = 5),
-      checkboxGroupInput(
-        inputId = "gender",
-        label= "Gender",
-        choices = c("male" = "male","female"= "female"),
-        selected = c("male", "female")))
+              "plotLeaf", width = "75%", height = "500px"))
+        #box(h3('Selections'),
+        #    sliderInput(inputId = "age_range",
+        #      label = "Age Range", min= 0 , max = 100,
+        #      value = c(20,80),
+        #      step = 5),
+        #    sliderInput(inputId = "time_in_area",
+        #      label = "Time in Area", min= 0 , max = 100,
+        #      value = c(20,50),
+        #      step = 5),
+        #    checkboxGroupInput(
+        #      inputId = "gender",
+        #      label= "Gender",
+        #      choices = c("male" = "male","female"= "female"),
+        #      selected = c("male", "female")))
       ))
       )
     )
@@ -695,15 +696,12 @@ server <- function(input, output) {
     leaflet(some_data) %>% 
       addTiles() %>% 
       addCircleMarkers(
-        lng = home_long,
-        lat = home_lat,
+        lng = ~home_long,
+        lat = ~home_lat,
         radius = 4,
         stroke = FALSE,
         fillOpacity = 1,
-        popup = paste0("<b>ID: </b>", "<b>",id,"</b>", "<br>",
-                       "Age: ", age, "<br>",
-                       "Sex: ", sex, "<br>",
-                       "Time in area: ", time_in_area, " years"))
+        popup = ~paste(id))
   })
   
   output$plot_spatial <- renderPlot({
