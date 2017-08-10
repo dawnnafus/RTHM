@@ -491,8 +491,8 @@ ui <- dashboardPage(
       tabItem(
         tabName = "ces",
         fluidRow(
-          box(HTML('<iframe width="800" height="600" frameborder="0" scrolling="yes" allowfullscreen src="https://arcg.is/0KTvm1"></iframe>')))
-          ),
+          htmlOutput(enviroscreen)
+          )),
       tabItem(
         tabName = "Leafer",
       fluidRow(
@@ -624,6 +624,13 @@ server <- function(input, output) {
                             "doctor", "id"),
                 selected = "heart_rate")
     
+  })
+  
+  output$enviroscreen <- renderUI({
+      HTML('<iframe width="800" height="600" frameborder="0" 
+           scrolling="no" allowfullscreen 
+           src="https://arcg.is/0KTvm1"></iframe>')
+
   })
   
   #output$view <- renderTable({ datadata() })
