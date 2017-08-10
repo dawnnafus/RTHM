@@ -531,7 +531,8 @@ my_plot(health_var = heart_rate,
 ```{r plot spatial points, echo=F, message=F, warning=F}
 # Load contra costa county shapefile
 cc <- readOGR(dsn ="../refinery_data/location/BaseMapGrid", 
-              layer = "GRD_PWD_BaseMap_0106")
+              layer = "GRD_PWD_BaseMap_0106",
+              verbose = F)
 
 # Convert to longlat data
 cc_wgs84 <- spTransform(cc, 

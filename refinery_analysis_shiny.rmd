@@ -413,8 +413,27 @@ summary_df <- total_df %>%
   ungroup
 ```
 
-## Filters
-This analysis looks at 
+```{r Cal Enviro Screen, warning=F, echo=F, message=F}
+## Load community health assessment data
+ces <- readOGR(dsn ="../refinery_data/location/CES3Results", 
+               layer = "CES3Results",
+               verbose = F)
+
+# Spatial transform
+ces_lat <- spTransform(ces, CRS("+proj=longlat +datum=WGS84"))
+
+# Subset for Contra Costa County
+ces_lat_cc <- subset(ces_lat, County == "Contra Costa")
+
+# Add a new column "id" from the rownames
+ces_lat_cc@data$id <- rownames(ces_lat_cc@data)
+
+# Create a dataframe from the spatial object
+new_data <- fortify(ces_lat_cc, region = "id")
+
+# Merge the "fortified" data with the spatial object data
+ces_df <- merge(new_data, ces_lat_cc@data, by = "id")
+```
 
 ```{r plot theme, warning=F, message=F, echo=F}
 # Create plotting theme
@@ -431,39 +450,80 @@ theme_fair_tech <- theme(
   )
 ```
 
-## Leaflet
-```{r leaflet, warning=F, message=F, echo=F}
-# Generate dynamic map
-map = leaflet(data = spatial_df) %>% 
-  addTiles()
+```{r plot spatial points, echo=F, message=F, warning=F}
+# Load contra costa county shapefile
+cc <- readOGR(dsn ="../refinery_data/location/BaseMapGrid", 
+              layer = "GRD_PWD_BaseMap_0106", 
+              verbose = F)
 
-# Call map
-map %>% addCircleMarkers(
-  lng = ~home_long,
-  lat = ~home_lat,
-  radius = 4,
-  stroke = FALSE,
-  fillOpacity = 1,
-  popup = paste0("<b>ID: </b>", "<b>",spatial_df$id,"</b>", "<br>",
-                  "Age: ", spatial_df$age, "<br>",
-                  "Sex: ", spatial_df$sex, "<br>",
-                 "Time in area: ", spatial_df$time_in_area, " years"))
+# Convert to longlat data
+cc_wgs84 <- spTransform(cc, 
+                        CRS("+proj=longlat +datum=WGS84"))
+
+
+# Basic plot of contra costa county
+cc_plot <- ggplot(cc_wgs84, aes(x=long, y=lat)) +
+  geom_path(aes(group=group)) + 
+  coord_map("mercator") + 
+  geom_point(aes(x= refinery[1], y= refinery[2]))
+
 ```
 
+## Dashboard
 ```{r shiny, echo=F, message=F, warning=F}
 library(rsconnect)
 library(shinydashboard)
+library(shiny)
+library(leaflet)
 ui <- dashboardPage(
   
   dashboardHeader(
-    title = "Correlations"
+    title = "Dashboard"
   ),
   
-  dashboardSidebar(),
+  dashboardSidebar(
+    sidebarMenu(
+      menuItem("Correlation Plot", tabName = "Correlation", icon = icon("dashboard")),
+      menuItem("Dynamic Map", tabname = "Leafer", icon = icon("map-o")),
+      menuItem("Spatial Plot", tabName = "Spatial", icon = icon("map"),
+               badgeLabel = "new")
+      )
+    ),
   dashboardBody(
-      #uiOutput('view'),
+    tags$style(type = "text/css", "#map {height: calc(100vh - 80px) !important;}"),
+    tabItems(
+      # First tab content
+      tabItem(tabName = "Correlation",
+              fluidRow(
+                box(
+                  plotOutput('plot1', height = 250)
+                    ),
+                box(
+                  h3('Selections'),
+                  sliderInput(
+                    inputId = "age_range",
+                    label = "Age Range", min= 0 , max = 100,
+                    value = c(20,80),
+                    step = 5),
+                  sliderInput(
+                    inputId = "time_in_area",
+                    label = "Time in Area", min= 0 , max = 100,
+                    value = c(20,50),
+                    step = 5),
+                  checkboxGroupInput(
+                    inputId = "gender",
+                    label= "Gender",
+                    choices = c("male" = "male","female"= "female"),
+                    selected = c("male", "female")
+                    ),
+                  uiOutput('genderSelect'),
+                  uiOutput('healthSelect'),
+                  uiOutput("pollutantSelect")
+                  ))),
+      tabItem(
+        tabName = "Spatial",
       fluidRow(
-        box(plotOutput('plot1', height = 250)),
+        box(plotOutput('plot_spatial', height = 250)),
         box(h3('Selections'),
       sliderInput(inputId = "age_range",
               label = "Age Range", min= 0 , max = 100,
@@ -478,13 +538,34 @@ ui <- dashboardPage(
         label= "Gender",
         choices = c("male" = "male","female"= "female"),
         selected = c("male", "female")),
-      uiOutput('genderSelect'),
-      uiOutput('healthSelect'),
-      uiOutput("pollutantSelect")
-      )
+      uiOutput('spatialSelect')
+      ))),
+      tabItem(
+        tabName = "Leafer",
+      fluidRow(
+        box(width = NULL,
+            leafletOutput(
+              "plotLeaf", width = "75%", height = "500px")),
+        box(h3('Selections'),
+      sliderInput(inputId = "age_range",
+              label = "Age Range", min= 0 , max = 100,
+              value = c(20,80),
+              step = 5),
+      sliderInput(inputId = "time_in_area",
+              label = "Time in Area", min= 0 , max = 100,
+              value = c(20,50),
+              step = 5),
+      checkboxGroupInput(
+        inputId = "gender",
+        label= "Gender",
+        choices = c("male" = "male","female"= "female"),
+        selected = c("male", "female")))
+      ))
       )
     )
-)
+  )
+    #uiOutput('view'),
+
 
 server <- function(input, output) {
   
@@ -521,7 +602,47 @@ server <- function(input, output) {
         ) %>%
         ungroup
   })
+  
+  data2 <- reactive({
+      # Merged dataframe 
+    individual_data %>%
+      filter(age > input$age_range[1] & age < input$age_range[2]) %>%
+      filter(time_in_area > input$time_in_area[1] & 
+               time_in_area < input$time_in_area[2]) %>%
+      filter(sex %in% input$gender) %>%
+      bind_rows(air_quality, .id = NULL) %>%
+      mutate(id = as.factor(id))
+    })
+  
+  data_binding <- reactive({
+    data2() %>%
+      select(-c(methane, sulfur_dioxide, ozone,
+                benzene, pm_2.5, carbon_monoxide,
+                sulfur_dioxide_exposure_window, xylene,
+                nitrous_oxide))
+    
+  })
 
+  data_spatial <- reactive({
+    data2() %>%
+      group_by(day) %>%
+        summarize(
+          methane = mean(methane, na.rm=T),
+          sulfur_dioxide = mean(sulfur_dioxide_exposure_window, na.rm=T),
+          ozone = mean(ozone, na.rm=T),
+          benzene = mean(benzene, na.rm=T),
+          pm_2.5 = mean(pm_2.5, na.rm=T),
+          carbon_monoxide = mean(carbon_monoxide, na.rm=T),
+          so2_not_window = mean(sulfur_dioxide, na.rm=T),
+          xylene = mean(xylene, na.rm=T),
+          nitrous_oxide = mean(nitrous_oxide, na.rm=T)
+        ) %>%
+        ungroup %>%
+        right_join(data_binding(), by = "day") %>%
+        filter(!is.na(id)) %>%
+        arrange(day)
+  })
+  
   output$healthSelect <- renderUI({
     selectInput("health_var", "Health Indicator", 
                 choices = c("heart_rate", "blood_oxygen", 
@@ -536,6 +657,16 @@ server <- function(input, output) {
                             "pm_2.5", "carbon_monoxide",
                             "xylene", "nitrous_oxide"),
                 selected = "methane")
+  })
+  
+  output$spatialSelect <- renderUI({
+    selectInput("spatial_var", "Variable of interest", 
+                choices = c("blood_oxygen",
+                            "sex", "time_in_area", "symptoms",
+                            "heart_rate", "age",
+                            "doctor", "id"),
+                selected = "heart_rate")
+    
   })
   
   #output$view <- renderTable({ datadata() })
@@ -556,7 +687,36 @@ server <- function(input, output) {
       geom_smooth(aes_string(x= input$pollutant_var, y= input$health_var), 
                   method = "lm", se=F) 
       #ggtitle(paste0("r = ",correlation))
+    })
+  
+  output$plotLeaf <- renderLeaflet({
+    some_data <- data_spatial()
+    
+    leaflet(some_data) %>% 
+      addTiles() %>% 
+      addCircleMarkers(
+        lng = home_long,
+        lat = home_lat,
+        radius = 4,
+        stroke = FALSE,
+        fillOpacity = 1,
+        popup = paste0("<b>ID: </b>", "<b>",id,"</b>", "<br>",
+                       "Age: ", age, "<br>",
+                       "Sex: ", sex, "<br>",
+                       "Time in area: ", time_in_area, " years"))
   })
+  
+  output$plot_spatial <- renderPlot({
+      the_data <- data_spatial()
+    cc_plot + 
+      geom_point(data=the_data,
+                 aes_string(
+                   x="longitude",
+                   y="latitude",
+                   color = input$spatial_var),
+                 na.rm = T) 
+    })
+  
   
 }
 
