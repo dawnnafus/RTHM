@@ -413,28 +413,6 @@ summary_df <- total_df %>%
   ungroup
 ```
 
-```{r Cal Enviro Screen, warning=F, echo=F, message=F}
-## Load community health assessment data
-ces <- readOGR(dsn ="../refinery_data/location/CES3Results", 
-               layer = "CES3Results",
-               verbose = F)
-
-# Spatial transform
-ces_lat <- spTransform(ces, CRS("+proj=longlat +datum=WGS84"))
-
-# Subset for Contra Costa County
-ces_lat_cc <- subset(ces_lat, County == "Contra Costa")
-
-# Add a new column "id" from the rownames
-ces_lat_cc@data$id <- rownames(ces_lat_cc@data)
-
-# Create a dataframe from the spatial object
-new_data <- fortify(ces_lat_cc, region = "id")
-
-# Merge the "fortified" data with the spatial object data
-ces_df <- merge(new_data, ces_lat_cc@data, by = "id")
-```
-
 ```{r plot theme, warning=F, message=F, echo=F}
 # Create plotting theme
 theme_fair_tech <- theme(
@@ -477,21 +455,20 @@ library(shiny)
 library(leaflet)
 library(tidyverse)
 ui <- dashboardPage(
-  
   dashboardHeader(
     title = "Dashboard"
   ),
   
   dashboardSidebar(
     sidebarMenu(
-      menuItem("Correlation Plot", tabName = "Correlation", icon = icon("dashboard")),
       menuItem("Dynamic Map", tabName = "Leafer", icon = icon("map-o")),
+      menuItem("Correlation Plot", tabName = "Correlation", icon = icon("dashboard")),
       menuItem("Spatial Plot", tabName = "Spatial", icon = icon("map"),
-               badgeLabel = "new")
+               badgeLabel = "new"),
+      menuItem("Cal Enviro Screen", tabName = "ces", icon = icon("map-marker"))
       )
     ),
   dashboardBody(
-    tags$style(type = "text/css", "#map {height: calc(100vh - 80px) !important;}"),
     tabItems(
       # First tab content
       tabItem(tabName = "Correlation",
@@ -501,7 +478,29 @@ ui <- dashboardPage(
                     ),
                 box(
                   h3('Selections'),
-                  sliderInput(
+                  uiOutput('healthSelect'),
+                  uiOutput("pollutantSelect")
+                  ))),
+      tabItem(
+        tabName = "Spatial",
+      fluidRow(
+        box(plotOutput('plot_spatial', height = 250)),
+        box(h3('Selections'),
+            uiOutput('spatialSelect')
+      ))),
+      tabItem(
+        tabName = "ces",
+        fluidRow(
+          box(HTML('<iframe width="800" height="600" frameborder="0" scrolling="yes" allowfullscreen src="https://arcg.is/0KTvm1"></iframe>')))
+          ),
+      tabItem(
+        tabName = "Leafer",
+      fluidRow(
+        box(width = NULL,
+            leafletOutput(
+              "plotLeaf", width = "75%", height = "500px")),
+        box(h3('Filters'),
+            sliderInput(
                     inputId = "age_range",
                     label = "Age Range", min= 0 , max = 100,
                     value = c(20,80),
@@ -517,50 +516,7 @@ ui <- dashboardPage(
                     choices = c("male" = "male","female"= "female"),
                     selected = c("male", "female")
                     ),
-                  uiOutput('genderSelect'),
-                  uiOutput('healthSelect'),
-                  uiOutput("pollutantSelect")
-                  ))),
-      tabItem(
-        tabName = "Spatial",
-      fluidRow(
-        box(plotOutput('plot_spatial', height = 250)),
-        box(h3('Selections'),
-            #sliderInput(inputId = "age_range",
-            #  label = "Age Range", min= 0 , max = 100,
-            #  value = c(20,80),
-            #  step = 5),
-            #sliderInput(inputId = "time_in_area",
-            #  label = "Time in Area", min= 0 , max = 100,
-            #  value = c(20,50),
-            #  step = 5),
-            #checkboxGroupInput(
-            #  inputId = "gender",
-            #  label= "Gender",
-            #  choices = c("male" = "male","female"= "female"),
-            #  selected = c("male", "female")),
-            uiOutput('spatialSelect')
-      ))),
-      tabItem(
-        tabName = "Leafer",
-      fluidRow(
-        box(width = NULL,
-            leafletOutput(
-              "plotLeaf", width = "75%", height = "500px"))
-        #box(h3('Selections'),
-        #    sliderInput(inputId = "age_range",
-        #      label = "Age Range", min= 0 , max = 100,
-        #      value = c(20,80),
-        #      step = 5),
-        #    sliderInput(inputId = "time_in_area",
-        #      label = "Time in Area", min= 0 , max = 100,
-        #      value = c(20,50),
-        #      step = 5),
-        #    checkboxGroupInput(
-        #      inputId = "gender",
-        #      label= "Gender",
-        #      choices = c("male" = "male","female"= "female"),
-        #      selected = c("male", "female")))
+                  uiOutput('genderSelect'))
       ))
       )
     )
