@@ -701,7 +701,10 @@ server <- function(input, output) {
         radius = 4,
         stroke = FALSE,
         fillOpacity = 1,
-        popup = ~paste(id))
+        label = ~paste("ID: ", id, 
+                       "Age: ", age,
+                       "Years in area: ", time_in_area,
+                       "Gender: ", sex))
   })
   
   output$plot_spatial <- renderPlot({
