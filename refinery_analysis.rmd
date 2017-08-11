@@ -531,7 +531,8 @@ my_plot(health_var = heart_rate,
 ```{r plot spatial points, echo=F, message=F, warning=F}
 # Load contra costa county shapefile
 cc <- readOGR(dsn ="../refinery_data/location/BaseMapGrid", 
-              layer = "GRD_PWD_BaseMap_0106")
+              layer = "GRD_PWD_BaseMap_0106",
+              verbose = F)
 
 # Convert to longlat data
 cc_wgs84 <- spTransform(cc, 
@@ -634,24 +635,4 @@ ggplot(waterDF, aes(x=long,
     labels=c("Low","Medium","High")) +
   coord_map("mercator") + 
   ggtitle("Cardiovascular Health")
-```
-
-## Leaflet
-```{r leaflet, warning=F, message=F, echo=F}
-# Generate dynamic map
-map = leaflet(data = spatial_df) %>% 
-  addTiles()
-
-# Call map
-map %>% addCircleMarkers(
-  lng = ~home_long,
-  lat = ~home_lat,
-  radius = 4,
-  stroke = FALSE,
-  fillOpacity = 0.8,
-  popup = paste0("<b>ID: </b>", "<b>",spatial_df$id,"</b>", "<br>",
-                  "Age: ", spatial_df$age, "<br>",
-                  "Sex: ", spatial_df$sex, "<br>",
-                 "Time in area: ", spatial_df$time_in_area),
-  popupOptions())
 ```

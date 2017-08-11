@@ -25,6 +25,7 @@ All data is aggregated or summarized by the hour.
 + [ggplot cheatsheet](http://zevross.com/blog/2014/08/04/beautiful-plotting-in-r-a-ggplot2-cheatsheet-3/)
 + [Programming with Dplyr](http://dplyr.tidyverse.org/articles/programming.html)
 + [Advanced R](http://adv-r.had.co.nz/)
++ [Shiny Dashboard](https://rstudio.github.io/shinydashboard/structure.html)
 
 ### Spatial Analysis
 
