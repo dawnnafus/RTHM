@@ -36,9 +36,15 @@ exp_end = as.POSIXct(end, tz="GMT", format="%Y-%m-%d %H")
 
 ```{r load air quality data, warning=F, message=F, echo=F}
 # load air quality data
-feed_4902 <- read_csv("../refinery_data/airQuality_feed4902_data.csv")
-feed_4901 <- read_csv("../refinery_data/airQuality_feed4901_data.csv")
-feed_4902_methane <- read_csv("../refinery_data/airQuality_N20_methane_4902_data.csv")
+feed_4902 <- read_csv("../refinery_data/airQuality_feed4902_data.csv"
+                      #, skip =2
+                      )
+feed_4901 <- read_csv("../refinery_data/airQuality_feed4901_data.csv"
+                      #, skip =2
+                      )
+feed_4902_methane <- read_csv("../refinery_data/airQuality_N20_methane_4902_data.csv"
+                              #, skip =2
+                              )
 
 # Make hourly averages
 ## Set zero's to NA to not "mess up" average
@@ -225,17 +231,29 @@ rm(paco)
 
 ```{r load fitbit data, message=F, warning=F, echo=F}
 # Load intraday activity
-fb_intraday_m3 <- read_csv("../refinery_data/fitbit_intradayactivities_m3.csv") %>%
+fb_intraday_m3 <- read_csv("../refinery_data/fitbit_intradayactivities_m3.csv"
+                           #, skip =2
+                           ) %>%
   mutate(id = "m3")
-fb_intraday_m5 <- read_csv("../refinery_data/fitbit_intradayactivities_m5.csv")%>%
+fb_intraday_m5 <- read_csv("../refinery_data/fitbit_intradayactivities_m5.csv"
+                           #, skip =2
+                           )%>%
   mutate(id = "m5")
-fb_intraday_m7 <- read_csv("../refinery_data/fitbit_intradayactivities_m7.csv")%>%
+fb_intraday_m7 <- read_csv("../refinery_data/fitbit_intradayactivities_m7.csv"
+                           #, skip =2
+                           )%>%
   mutate(id = "m7")
-fb_intraday_m9 <- read_csv("../refinery_data/fitbit_intradayactivities_m9.csv")%>%
+fb_intraday_m9 <- read_csv("../refinery_data/fitbit_intradayactivities_m9.csv"
+                           #, skip =2
+                           )%>%
   mutate(id = "m9")
-fb_intraday_m11 <- read_csv("../refinery_data/fitbit_intradayactivities_m11.csv")%>%
+fb_intraday_m11 <- read_csv("../refinery_data/fitbit_intradayactivities_m11.csv"
+                            #, skip =2
+                            )%>%
   mutate(id = "m11")
-fb_intraday_m16 <- read_csv("../refinery_data/fitbit_intradayactivities_m16.csv")%>%
+fb_intraday_m16 <- read_csv("../refinery_data/fitbit_intradayactivities_m16.csv"
+                            #, skip =2
+                            )%>%
   mutate(id = "m16")
 
 # Combine dataframes
