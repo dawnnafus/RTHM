@@ -244,6 +244,8 @@ function(input, output){
                          x="longitude",
                          y="latitude",
                          color = input$spatial_var),
-                       na.rm = T) 
+                       na.rm = T) + 
+            ggtitle("Plotting the Variable by Location:
+                    Magnitude and Location in Contra Costa County")
         })
 }

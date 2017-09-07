@@ -18,7 +18,7 @@ header <- dashboardHeader(
   
 sidebar <-  dashboardSidebar(
     sidebarMenu(
-      menuItem("Dynamic Map", tabName = "Leafer", icon = icon("map-o")),
+      menuItem("ID Map", tabName = "Leafer", icon = icon("map-o")),
       menuItem("Correlation Plot", tabName = "Correlation", icon = icon("dashboard")),
       menuItem("Spatial Plot", tabName = "Spatial", icon = icon("map"),
                badgeLabel = "new"),
