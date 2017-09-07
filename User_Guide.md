@@ -28,15 +28,14 @@ You need to collect your data, and make sure it is in the right location to be r
 3. Refinery pollution
 4. GPS/ Demographic data. 
 
-The sources of these data are listed in the references document.
+The sources of these data are listed in the [references document](https://github.com/niklaslollo/refinery-stats/blob/master/references.md).
 
 ## Manipulating the code
 Throughout the code, there are various user inputs and selections. These are marked in the code, but will be noted below in the detailed instructions. For instance, you will be asked to make the timeframe, id's, and exposure windows relevant for your project.
-Image.
 
 ## To print a report
 Results will appear in-line (i.e. within RStudio), however if you want to print a report and share it as a PDF, click `Knit` in the icon bar right above the code window. This will generate a PDF which you can save to your desktop.
-Image.
+![Knit](images/knit.png)
 
 # 2. Detailed Instructions
 ## If you haven't used R before
@@ -47,28 +46,31 @@ Image.
 
 Create two side-by-side folders. One is titled: "refinery_data" while the other is "refinery_stats." ![Folders](images/folders.png)
 
-Download the analysis file (refinery-analysis.rmd) from github [https://github.com/niklaslollo/refinery-stats/](https://github.com/niklaslollo/refinery-stats/), put it in "refinery-stats." Double-click on the file and RStudio should open. 
+Download the analysis file (*refinery-analysis.rmd*) from github [https://github.com/niklaslollo/refinery-stats/](https://github.com/niklaslollo/refinery-stats/), put it in "refinery-stats." Double-click on the file and RStudio should open. 
 
 ## Once you've installed and set-up R
 
-Acquire the needed datasets:
+Acquire the datasets:
 
-  1. Paco
+  1. Individual diary data
+    + Includes blood oxygen and symptoms reporting
+    + There should be one dataset with a column for id
   2. Fitbit
     + Within day data for all users
+    + These will be separate datasets
   3. Pollution data
     + Feed 4901
     + Feed 4901 Methane
     + Feed 4902
     + Feed 4902 Methane
-  4. GPS data
+  4. GPS/ Demographic data
   
 Put these datasets side-by-side in the "refinery_data" folder.
 
 ## Data management
 Here is how each dataset should look. Please make sure you follow this template exactly.
 
-1. **Paco**
+1. **Individual Diary**
     + User inputted reports. These should be collated into one file. ![image](images/paco.png)
   
 2. **Fitbit**
@@ -78,7 +80,7 @@ Here is how each dataset should look. Please make sure you follow this template 
     + Feed data for non-methane ![image](images/AirQuality.png)
     + Feed data for methane ![image](images/methane.png)
   
-4. **GPS/ Demographic data**
+4. **GPS/ Demographics**
 
 ## Adjusting the code for your project
 
@@ -174,6 +176,61 @@ In this case, if you want to change the health indicator, you would change the f
 
 **10. Spatial analysis**
 
-    
+The spatial files are located in the github in folder `data/location/`. Download both the folders within `location` and place in a folder called `data` contained within `refinery_stats`. 
+
+  + Plotting points in space
+
+The only code you need to change (if you want) is the final chunk
+```
+# Plot heart rate over space
+r + 
+  geom_point(data=spatial_df, 
+             aes(x=longitude, y=latitude,
+                 color = heart_rate), 
+             na.rm = T)
+```
+In this case, you will change the `color` to your variable of interest. Any variable should be able to fit. This will give you a plot of that variable over the contra costa county.
+
+  + Testing for autocorrelation
+  
+In this test, you again only need to change one value. Here is the test:
+
+```
+# Moran's I Monte Carlo
+moran_out <- moran.mc(spatial_df$heart_rate,
+                      spatial_listw,
+                      nsim=99,
+                      zero.policy = T,
+                      na.action = na.omit)
+```
+Here you change the first input `spatial_df$heart_rate`. This will still need `spatial_df$`. You will append your variable of interest. The output will tell you if e.g. heart rate is correlated with location. This may or not be visible in the previous plot.
+
+  + Using the Cal Enviro Screen data
+
+After running the first three lines of code, it is recommended to familiarize yourself with data and columns. Please run
+```
+head(ces_lat_cc@data)
+```
+and view in the console the columns.
+
+Then,
+```
+# Map (e.g. the cardiovascular scores)
+ggplot(waterDF, 
+       aes(x=long, y=lat,
+           group = group,
+           fill = Cardiovasc)) +
+  geom_polygon()  +
+  geom_path(color = "white") +
+  scale_fill_gradient(
+    low = "plum1", high = "purple4",
+    breaks=c(500000,1000000,1500000),
+    labels=c("Low","Medium","High")) +
+  coord_map("mercator") + 
+  ggtitle("Cardiovascular Health")
+```
+Here you will change a few values. First, you will change `fill` to a variable of interest. This variable will come from the dataset you just examined. Next, you will change the breaks to represent values at reasonable intervals of the variable. Then you will change `ggtitle` to make the title of the plot.
+
+** Print your report **
   
 
