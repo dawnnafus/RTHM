@@ -231,6 +231,6 @@ ggplot(waterDF,
 ```
 Here you will change a few values. First, you will change `fill` to a variable of interest. This variable will come from the dataset you just examined. Next, you will change the breaks to represent values at reasonable intervals of the variable. Then you will change `ggtitle` to make the title of the plot.
 
-** Print your report **
+**Print your report**
   
 
