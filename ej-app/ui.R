@@ -13,7 +13,7 @@ lapply(required_pkg, library, character.only = TRUE)
 ## Shiny Code
 
 header <- dashboardHeader(
-    title = "Dashboard"
+    title = "Fair Tech Collective Dashboard"
   )
   
 sidebar <-  dashboardSidebar(

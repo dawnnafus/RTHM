@@ -52,7 +52,7 @@ theme_fair_tech <- theme(
 
 ### Load Spatial Data
 # Load contra costa county shapefile
-cc <- readOGR(dsn ="../../refinery_data/location/BaseMapGrid", 
+cc <- readOGR(dsn ="../data/location/BaseMapGrid", 
               layer = "GRD_PWD_BaseMap_0106", 
               verbose = F)
 
