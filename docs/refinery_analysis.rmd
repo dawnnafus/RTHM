@@ -18,8 +18,8 @@ lapply(required_pkg, library, character.only = TRUE)
 ```
 
 ```{r load data, warning=F, message=F, echo=F}
-individual_data <- read_csv("data/individual_data.csv")
-air_quality <- read_csv("data/air_quality.csv")
+individual_data <- read_csv("../../refinery_data/data/individual_data.csv")
+air_quality <- read_csv("../../refinery_data/data/air_quality.csv")
 ```
 
 ```{r TO DO filter your data, message=F, warning=F, echo=F}
@@ -216,7 +216,7 @@ my_plot(health_var = heart_rate,
 ## Plot points
 ```{r plot spatial points, echo=F, message=F, warning=F}
 # Load contra costa county shapefile
-cc <- readOGR(dsn ="data/location/BaseMapGrid", 
+cc <- readOGR(dsn ="../data/location/BaseMapGrid", 
               layer = "GRD_PWD_BaseMap_0106",
               verbose = F)
 
@@ -289,7 +289,7 @@ paste0("Moran's I z-score: ", moran_out$statistic)
 ## Load Cal Enviro Screen
 ```{r Cal Enviro Screen, warning=F, echo=F, message=F}
 ## Load community health assessment data
-ces <- readOGR(dsn ="data/location/CES3Results", 
+ces <- readOGR(dsn ="../data/location/CES3Results", 
                layer = "CES3Results", 
                verbose = F)
 

@@ -11,8 +11,8 @@ required_pkg <- c("tidyverse","maptools", "rgdal",
 lapply(required_pkg, library, character.only = TRUE)
 
 # Load data
-individual_data <- read_csv("../data/individual_data.csv")
-air_quality <- read_csv("../data/air_quality.csv")
+individual_data <- read_csv("../../refinery_data/data/individual_data.csv")
+air_quality <- read_csv("../../refinery_data/data/air_quality.csv")
 
 ### Data manipulation
 # Merged dataframe 
