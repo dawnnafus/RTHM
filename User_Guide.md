@@ -1,43 +1,11 @@
 ---
-title: User Guide
+title: User Guide for Statistical 
+output:
+  html_document:
+    toc: true
 ---
 
-# 1. Executive Summary
-
-## R
-First, you need to download [R](https://cran.cnr.berkeley.edu/) and [RStudio](https://www.rstudio.com/products/RStudio/#Desktop). Both are free. Make sure to download the correct R version for your operating system and the desktop version of RStudio.
-
-The versions used to create the code are listed below. Other versions may or may not work with the code.
-
-+ RStudio version 1.0.153
-+ R version 3.4.0
-
-This is the key package needed for the code. The code installs and/or loads it automatically, but just in case the version is listed below.
-
-+ tidyverse version 1.1.1
-
-And finally, this is a highly recommended tutorial for getting started with R, however the code does not require you to know the language. The analysis only requires following specified directions, but you may elect to tinker with the code. In the references document, you can find more assistance.
-
-+ http://r4ds.had.co.nz/introduction.html
-
-## Data
-You need to collect your data, and make sure it is in the right location to be read by the code. The key datasets are: 
-
-1. Symptoms reporting (Paco)
-2. Fitbit
-3. Refinery pollution
-4. GPS/ Demographic data. 
-
-The sources of these data are listed in the [references document](https://github.com/niklaslollo/refinery-stats/blob/master/references.md).
-
-## Manipulating the code
-Throughout the code, there are various user inputs and selections. These are marked in the code, but will be noted below in the detailed instructions. For instance, you will be asked to make the timeframe, id's, and exposure windows relevant for your project.
-
-## To print a report
-Results will appear in-line (i.e. within RStudio), however if you want to print a report and share it as a PDF, click `Knit` in the icon bar right above the code window. This will generate a PDF which you can save to your desktop.
-![Knit](images/knit.png)
-
-# 2. Detailed Instructions
+# Detailed Instructions
 ## If you haven't used R before
 
 **First**, download R at this [webpage](https://cran.cnr.berkeley.edu/).![R download page](images/R_download_page.png)
@@ -82,7 +50,10 @@ Here is how each dataset should look. Please make sure you follow this template 
   
 4. **GPS/ Demographics**
 
-## Adjusting the code for your project
+## Data Cleaning
+**Open the Document**
+The document you want to open is data_cleaning.Rmd
+
 
 **1. Loading packages**
 
@@ -151,6 +122,24 @@ Here is how each dataset should look. Please make sure you follow this template 
 
 !!
 
+## Working with your Clean Data
+
+### Using the ej-app for exploratory analysis
+At this point, you should simply be able to open `server.R` in RStudio. Once you do, in the top right, you will see [Run App](images/serverR.png). Click that button and a new window will open. 
+
+This interface should be intuitive. However, it includes four pages denoted by the sidepanel. 
+
+The first shows each ID and the associated home location. Hover over the ID for more information about that individual. At the bottom of the page there are filters for you to use. *These will affect the other pages, so be careful.* 
+
+The next page shows correlations between individual health indicators and refinery pollutant data.
+
+The third page shows how values change over the space. The background is Contra Costa County.
+
+The fourth page brings in the Cal Enviro Screen webmap. Use this to understand if a particular ID might be receiving more or less cumulative burden than others.
+
+
+### Using the refinery_analysis.Rmd
+
 **8. Filters**
 
   + In the next code chunk `TO DO filter your data`, you will need to select the filters you would like to apply to the analysis. (Note, this is only needed for detailed statistics. You will be able to play with the interactive plots, but those will not provide statistics at this point.) In order to filter, you will need do two things:
@@ -211,7 +200,7 @@ After running the first three lines of code, it is recommended to familiarize yo
 ```
 head(ces_lat_cc@data)
 ```
-and view in the console the columns.
+and view the columns in the console.
 
 Then,
 ```
@@ -232,5 +221,6 @@ ggplot(waterDF,
 Here you will change a few values. First, you will change `fill` to a variable of interest. This variable will come from the dataset you just examined. Next, you will change the breaks to represent values at reasonable intervals of the variable. Then you will change `ggtitle` to make the title of the plot.
 
 **Print your report**
-  
+Results will appear in-line (i.e. within RStudio), however if you want to print a report and share it as a PDF, click `Knit` in the icon bar right above the code window. This will generate a PDF which you can save to your desktop.
+![Knit](images/knit.png)
 
