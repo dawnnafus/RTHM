@@ -125,7 +125,7 @@ The document you want to open is data_cleaning.Rmd
 ## Working with your Clean Data
 
 ### Using the ej-app for exploratory analysis
-At this point, you should simply be able to open `server.R` in RStudio. Once you do, in the top right, you will see [Run App](images/serverR.png). Click that button and a new window will open. 
+At this point, you should simply be able to open `server.R` in RStudio. Once you do, in the top right, you will see ![Run App](images/serverR.png). Click that button and a new window will open. 
 
 This interface should be intuitive. However, it includes four pages denoted by the sidepanel. 
 
