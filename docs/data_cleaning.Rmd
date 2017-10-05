@@ -171,13 +171,8 @@ paco <- paco %>%
     # Converting / to - part 2
     when=sub("\\/","-",when),
     # Rename persons of interest
-    who = replace(who, who=="meaningfrommonitoring3@gmail.com", "m3"),
-    who = replace(who, who=="meaningfrommonitoring5@gmail.com", "m5"),
-    who = replace(who, who=="meaningfrommonitoring7@gmail.com", "m7"),
-    who = replace(who, who=="meaningfrommonitoring9@gmail.com", "m9"),
-    who = replace(who, who=="meaningfrommonitoring10@gmail.com", "m10"),
-    who = replace(who, who=="meaningfrommonitoring11@gmail.com", "m11"),
-    who = replace(who, who=="meaningfrommonitoring16@gmail.com", "m16")
+    who = sub("meaningfrommonitoring","m",who),
+    who = sub("@gmail.com","", who)
   ) %>%
   mutate(
     # Make person column as a factor
@@ -190,9 +185,7 @@ paco <- paco %>%
             actionTriggerId, actionId, actionSpecId, responseTime,
             scheduledTime, timeZone)) %>%
   # Select persons of interest 
-  filter(id == "m3" | id == "m5" | id == "m7" |
-      id == "m9" | id == "m10" | id == "m11" |
-      id == "m16") %>%
+  filter(id %in% c("m3","m5", "m7","m9","m10","m11","m16")) %>%
   arrange(t)
 
 # Remove unlikely values
@@ -219,9 +212,7 @@ paco_hourly <- paco %>%
            fill = list(blood_oxygen = NA)) %>%
   ungroup %>%
   # Select persons of interest 
-  filter(id == "m3" | id == "m5" | id == "m7" |
-      id == "m9" | id == "m10" | id == "m11" |
-      id == "m16") %>%
+  filter(id %in% c("m3","m5", "m7","m9","m10","m11","m16")) %>%
   # Arrange the columns by person
   arrange(id)
 
@@ -288,9 +279,7 @@ fb_intraday <- fb_intra %>%
                          steps = NA, heart_rate = NA,
                          floors = NA, elevation = NA)) %>%
   # Select persons of interest 
-  filter(id == "m3" | id == "m5" | id == "m7" |
-      id == "m9" | id == "m10" | id == "m11" |
-      id == "m16") %>%
+  filter(id %in% c("m3","m5", "m7","m9","m10","m11","m16")) %>%
   # Arrange the columns by day
   arrange(id, day) 
 
@@ -337,6 +326,28 @@ demographics <- data_frame(
     home_dist_to_refinery = distm(cbind(home_long, home_lat), 
                                   refinery, 
                                   fun= distHaversine))
+
+survey <- read_csv("../../refinery_data/survey.csv") %>%
+  filter(Finished == "TRUE") %>% # Gets rid of first two rows
+  select(-c(StartDate:Finished)) %>%
+  mutate(
+    date = as.POSIXct(RecordedDate, tz = "GMT", format="%m/%d/%Y %H:%M"),
+    lat = as.numeric(LocationLatitude),
+    long = as.numeric(LocationLongitude),
+    dist_channel = as.factor(DistributionChannel),
+    language = as.factor(UserLanguage),
+    address = Q2,
+    age = as.numeric(Q3),
+    gender = as.factor(Q4)
+  )
+
+# Read in location data
+locations <- read_csv("../../refinery_data/moves.csv", skip = 1) %>%
+  transmute(
+    t,
+    lat = as.numeric(`__location___lat`),
+    long = as.numeric(`__location___lng`)
+  )
 
 # LongLat randomizer
 # Will have real GPS data loaded 
