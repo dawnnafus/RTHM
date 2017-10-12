@@ -118,9 +118,12 @@ The document you want to open is data_cleaning.Rmd
   + After `rm(` input all the dataframes you just loaded, except for the merged data.
   + You will need to `filter` for your ID's of interest here as well.
   
-**7. Demographic data**
+**7. Demographic & location data**
 
-!!
+  + Load (`read_csv`) the user specified dataframes in the same way as above. This time, however, we use a `%>%` to move to the next function call that creates (`filter`) a filter for completed surveys. 
+  + The code still needs to match `id` to some user-specified entry in the survey data.
+  + For location data, load (`read_csv`) the user specified dataframes in the same way as above. We again use a `%>%` to move to the next function call that creates (`transmutes`) a usable dataframe. 
+  + Since these are not connected to an id at this point, they are not later combined with the full dataframe, though this will need to happen when the final data comes in.
 
 ## Working with your Clean Data
 
