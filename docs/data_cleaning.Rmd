@@ -289,43 +289,42 @@ rm(fb_intra)
 
 ```{r make individual data, message=F, warning=F, echo=F}
 # Collect participant home addresses
-m3_home = as.numeric(
-  geocode("460 3rd St, Richmond, CA 94801",
-          source="google"))
-m5_home = as.numeric(
-  geocode("2515 Downer Ave, Richmond, CA 94804",
-          source="google"))
-m7_home = as.numeric(
-  geocode("2640 Esmond Ave, Richmond, CA 94804",
-          source="google"))
-m9_home = as.numeric(
-  geocode("1612 Mission Ave, San Pablo, CA 94806",
-          source="google"))
-m10_home = as.numeric(
-  geocode("1832 4th St, Richmond, CA 94801",
-          source="google"))
-m11_home = as.numeric(
-  geocode("2836 18th St, San Pablo, CA 94806",
-          source="google"))
-m16_home = as.numeric(
-  geocode("5733 Oakmont Dr, Richmond, CA 94806",
-          source="google"))
+#m3_home = as.numeric(
+#  geocode("460 3rd St, Richmond, CA 94801",
+#          source="google"))
+#m5_home = as.numeric(
+#  geocode("2515 Downer Ave, Richmond, CA 94804",
+#          source="google"))
+#m7_home = as.numeric(
+#  geocode("2640 Esmond Ave, Richmond, CA 94804",
+#          source="google"))
+#m9_home = as.numeric(
+#  geocode("1612 Mission Ave, San Pablo, CA 94806",
+#          source="google"))
+#m10_home = as.numeric(
+#  geocode("1832 4th St, Richmond, CA 94801",
+#          source="google"))
+#m11_home = as.numeric(
+#  geocode("2836 18th St, San Pablo, CA 94806",
+#          source="google"))
+#m16_home = as.numeric(
+#  geocode("5733 Oakmont Dr, Richmond, CA 94806",
+#          source="google"))
 
 # Make demographics dataframe
-# Will load in later
-demographics <- data_frame(
-  id =  c("m3","m5","m7","m9","m10","m11","m16"),
-  age = c(21,34,45,33,56,67,51),
-  time_in_area = c(20,16,5,10,50,32,27),
-  home_lat = c(m3_home[2], m5_home[2], m7_home[2],
-               m9_home[2], m10_home[2], m11_home[2], m16_home[2]),
-  home_long = c(m3_home[1], m5_home[1], m7_home[1],
-                m9_home[1], m10_home[1], m11_home[1], m16_home[1]),
-  sex = as.factor(c("male","female","male","female","female","male","female"))) %>%
-  mutate(
-    home_dist_to_refinery = distm(cbind(home_long, home_lat), 
-                                  refinery, 
-                                  fun= distHaversine))
+#demographics <- data_frame(
+#  id =  c("m3","m5","m7","m9","m10","m11","m16"),
+#  age = c(21,34,45,33,56,67,51),
+#  time_in_area = c(20,16,5,10,50,32,27),
+#  home_lat = c(m3_home[2], m5_home[2], m7_home[2],
+#               m9_home[2], m10_home[2], m11_home[2], m16_home[2]),
+#  home_long = c(m3_home[1], m5_home[1], m7_home[1],
+#                m9_home[1], m10_home[1], m11_home[1], m16_home[1]),
+#  sex = as.factor(c("male","female","male","female","female","male","female"))) %>%
+#  mutate(
+#    home_dist_to_refinery = distm(cbind(home_long, home_lat), 
+#                                  refinery, 
+#                                  fun= distHaversine))
 
 survey <- read_csv("../../refinery_data/survey.csv") %>%
   filter(Finished == "TRUE") %>% # Gets rid of first two rows
@@ -351,11 +350,11 @@ locations <- read_csv("../../refinery_data/moves.csv", skip = 1) %>%
 
 # LongLat randomizer
 # Will have real GPS data loaded 
-set.seed(0)
-long_possible = (-12243009:-12153414)/100000
-lat_possible = (3771863:3809988)/100000
-longitude = sample(long_possible,24414, replace = T)
-latitude = sample(lat_possible,24414, replace = T)
+#set.seed(0)
+#long_possible = (-12243009:-12153414)/100000
+#lat_possible = (3771863:3809988)/100000
+#longitude = sample(long_possible,24414, replace = T)
+#latitude = sample(lat_possible,24414, replace = T)
 
 # Merge demographics with fitbit and paco datasets
 fb_data <- left_join(fb_intraday, demographics, by = "id") %>%
