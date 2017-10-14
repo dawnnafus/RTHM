@@ -27,7 +27,6 @@ sidebar <-  dashboardSidebar(
   )
 body <- dashboardBody(
     tabItems(
-      # First tab content
       tabItem(tabName = "Correlation",
               fluidRow(
                 box(
@@ -73,7 +72,9 @@ body <- dashboardBody(
                 choices = c("male" = "male","female"= "female"),
                 selected = c("male", "female")
               ),
-              uiOutput('genderSelect'))
+              uiOutput('genderSelect'),
+              actionButton("go", "Go")
+          )
         ))
     )
   )

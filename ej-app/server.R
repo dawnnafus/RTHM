@@ -60,18 +60,15 @@ cc <- readOGR(dsn ="../data/location/BaseMapGrid",
 cc_wgs84 <- spTransform(cc, 
                         CRS("+proj=longlat +datum=WGS84"))
 
-
 # Basic plot of contra costa county
 cc_plot <- ggplot(cc_wgs84, aes(x=long, y=lat)) +
   geom_path(aes(group=group)) + 
   coord_map("mercator") + 
   geom_point(aes(x= air_quality$longitude[[1]], y= air_quality$latitude[[1]]))
 
-
-
 ### Shiny Code
 function(input, output){
-        datadata <- reactive({
+        datadata <- eventReactive(input$go, {
           
           individual_data %>%
             mutate(
@@ -118,7 +115,7 @@ function(input, output){
             ungroup
         })
         
-        data2 <- reactive({
+        data2 <- eventReactive(input$go, {
           # Merged dataframe 
           individual_data %>%
             mutate(
